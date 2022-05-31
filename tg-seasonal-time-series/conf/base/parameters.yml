@@ -1,0 +1,21 @@
+splitter: anchored
+
+splitter_kwargs:
+  min_train_points: 50
+  ahead: 1
+  step: 1
+# -----------------------------
+# -----------------------------
+# model: NAIVE
+# model_kwargs:
+# -----------------------------
+# model: SARIMA
+# model_kwargs:
+#   m: 12
+# -----------------------------
+model: RNN
+model_kwargs:
+  epochs: 500
+  timesteps: 12
+  hidden_units: 32
+# -----------------------------

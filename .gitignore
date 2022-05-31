@@ -1,0 +1,16 @@
+/.venv
+/.vscode
+/a.csv
+/air_passengers.csv
+/main.ipynb
+/plot_preds.ipynb
+/pred.csv
+/preds copy.csv
+/preds.csv
+/real.csv
+/reals copy.csv
+/reals.csv
+/src
+/The Econometric Analysis of Seasonal Time Series (Eric Ghysels, Denise R. Osborn) (z-lib.org).pdf
+/train.csv
+/_.ipynb

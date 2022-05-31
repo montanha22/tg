@@ -1,0 +1,4 @@
+artifact_location: file:///C:/Users/Gustavo-pessoal/programming/tg/tg-seasonal-time-series/mlruns/1
+experiment_id: '1'
+lifecycle_stage: active
+name: seasonal_time_series
