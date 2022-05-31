@@ -1,0 +1,1 @@
+{'epochs': 500, 'timesteps': 12, 'hidden_units': 32}

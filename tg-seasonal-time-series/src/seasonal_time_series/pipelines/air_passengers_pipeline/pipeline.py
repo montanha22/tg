@@ -28,5 +28,11 @@ def create_pipeline(**kwargs):
                 outputs=dict(rmse="rmse", smape="smape", mape="mape", mae="mae"),
                 name="generate_metrics",
             ),
+            node(
+                lambda preds: preds.to_frame().reset_index(),
+                inputs="preds",
+                outputs="preds_df",
+                name="preds_to_df",
+            ),
         ]
     )

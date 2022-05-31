@@ -54,7 +54,7 @@ def fit_trains_and_predict_next(
     partial_predict = partial(_predict, model_factory, model_kwargs)
     with Pool() as pool:
         preds = pool.map(partial_predict, trains)
-        return pd.Series(preds, index=test.index)
+        return pd.Series(preds, index=test.index, name=test.name)
 
 
 def _predict(

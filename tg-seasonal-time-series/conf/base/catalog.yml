@@ -21,3 +21,9 @@ mape:
 
 mae:
     type: kedro_mlflow.io.metrics.MlflowMetricDataSet
+
+preds_df:
+    type: kedro_mlflow.io.artifacts.MlflowArtifactDataSet
+    data_set:
+        type: pandas.CSVDataSet # or any valid kedro DataSet
+        filepath: data/07_model_output/preds.csv
