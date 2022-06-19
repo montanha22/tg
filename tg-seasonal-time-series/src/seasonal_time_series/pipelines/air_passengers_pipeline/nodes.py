@@ -16,8 +16,33 @@ class Splitter(Protocol):
         ...
 
 
+def hyperparameter_tuning(
+    y: pd.DataFrame,
+    model: str,
+    splitter_type: str,
+    splitter_kwargs: dict[str, Any],
+    params: dict,
+    n_jobs: int = 1,
+    verbose: bool = False,
+) -> dict:
+    """
+    Hyperparameter tuning for a given model.
+    """
+    y = y["Passengers"]
+
+    model_factory = MODELS_FACTORY_MAP.get(model)
+    if not model_factory:
+        raise ValueError(f"Model {model} not found")
+
+    splitter = SPLITTERS_MAP.get(splitter_type)(**splitter_kwargs)
+    if not splitter:
+        raise ValueError(f"Splitter {splitter_type} not found")
+
+
 def split_trains_test(
-    y: pd.DataFrame, splitter_type: str, splitter_kwargs: dict[str, Any]
+    y: pd.DataFrame,
+    splitter_type: str,
+    splitter_kwargs: dict[str, Any],
 ) -> dict[str, Any]:
 
     y = y["Passengers"]
@@ -90,7 +115,7 @@ def _mae(y_preds: pd.Series, y_true: pd.Series) -> float:
 
 def _mape(y_preds: pd.Series, y_true: pd.Series) -> float:
     y_preds, y_true = np.array(y_preds), np.array(y_true)
-    return np.mean(np.abs((y_preds - y_true) / y_preds)) * 100
+    return np.mean(np.abs((y_preds - y_true) / y_true)) * 100
 
 
 def generate_metrics(y_preds: pd.Series, y_true: pd.Series) -> dict[str, Any]:
