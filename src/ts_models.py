@@ -1,5 +1,5 @@
 import os
-from typing import Dict, Type
+from typing import Dict, Literal, Type
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
@@ -9,10 +9,12 @@ import optuna
 import pandas as pd
 import pmdarima as pm
 import tensorflow as tf
+from statsmodels.tsa.tsatools import lagmat
 
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 from keras import layers
+from sklearn.svm import SVR
 
 from src.models import OneAheadModel
 
@@ -31,6 +33,49 @@ class SARIMAModel:
     @staticmethod
     def suggest_params(trial: optuna.Trial) -> Dict[str, int]:
         return {"m": trial.suggest_categorical("m", [1, 4, 6, 12])}
+
+
+class SARIMASVRModel:
+    def __init__(
+        self,
+        svr_kernel: Literal["linear", "poly", "rbf", "sigmoid"],
+        svr_C: float,
+    ):
+        self.arima_m = 12
+        self.svr_kernel = svr_kernel
+        self.svr_C = svr_C
+
+    def fit(self, y: pd.Series) -> None:
+        y = y.values
+        y_len = len(y)
+        self.sarima = pm.auto_arima(y, seasonal=True, m=self.arima_m)
+        self.svr = SVR(kernel=self.svr_kernel, C=self.svr_C)
+
+        arima_y_pred = self.sarima.predict_in_sample()
+        arima_errors = np.array(y - arima_y_pred)[1:]
+        last_arima_errors = lagmat(arima_errors, self.arima_m, "both")
+        lagged_y = lagmat(y[1:], self.arima_m, "both")
+        svm_features = np.hstack([last_arima_errors, lagged_y])
+        svm_y_train = y[-(y_len - self.arima_m) + 1 :].reshape(-1)
+
+        self.svr.fit(svm_features, svm_y_train)
+
+        last_arima_errors = lagmat(arima_errors, self.arima_m - 1, "both", "in")
+        lagged_y = lagmat(y, self.arima_m - 1, "both", "in")
+
+        self.svr_input = np.hstack([last_arima_errors[-1], lagged_y[-1]]).reshape(1, -1)
+
+    def predict_one_ahead(self) -> float:
+        return self.svr.predict(self.svr_input)[0]
+
+    @staticmethod
+    def suggest_params(trial: optuna.Trial) -> Dict[str, int]:
+        return {
+            "svr_kernel": trial.suggest_categorical(
+                "svr_kernel", ("linear", "poly", "rbf", "sigmoid")
+            ),
+            "svr_C": trial.suggest_loguniform("svr_C", low=1e-2, high=1e2),
+        }
 
 
 class ARIMAModel:
@@ -115,4 +160,5 @@ MODEL_CLASS_LOOKUP: Dict[str, Type[OneAheadModel]] = {
     "ARIMA": ARIMAModel,
     "RNN": RNNModel,
     "NAIVE": NaiveModel,
+    "SARIMA_SVR": SARIMASVRModel,
 }
