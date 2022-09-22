@@ -17,3 +17,4 @@
 /trash
 /.venv2
 /_tg-seasonal-time-series
+__pycache__/

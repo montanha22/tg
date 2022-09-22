@@ -112,8 +112,10 @@ def train_and_test_model():
     # params = {"m": 12}
     # model_name = "NAIVE"
     # params = {"constant": 0}
-    model_name = "ARIMA"
-    params = {}
+    # model_name = "ARIMA"
+    # params = {}
+    model_name = "SARIMA_SVR"
+    params = {"svr_C": 0.011103136450426, "svr_kernel": "linear"}
 
     n_train_points = 113
 
@@ -148,7 +150,7 @@ def train_and_test_model():
 
 def get_best_study_params() -> dict:
     dataset_name = "AIR_PASSENGERS"
-    model_name = "RNN"
+    model_name = "SARIMA_SVR"
 
     study_name = f"{dataset_name}/{model_name}/v2"
     study = optuna.create_study(
@@ -163,7 +165,7 @@ def get_best_study_params() -> dict:
 
 def tune_hyperparameters_with_optuna():
     dataset_name = "AIR_PASSENGERS"
-    model_name = "RNN"
+    model_name = "SARIMA_SVR"
     train_pct = 0.8
 
     study_name = f"{dataset_name}/{model_name}/v2"
