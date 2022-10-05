@@ -6,11 +6,12 @@ from uuid import uuid4
 import mlflow
 import optuna
 import pandas as pd
+from tqdm import tqdm
 
 from src import metrics, models
 from src.datasets import DATASET_FACTORY_LOOKUP
 from src.splitters import AnchoredSplitter, Splitter
-from src.ts_models import MODEL_CLASS_LOOKUP
+from src.ts_models import ModelClassLookupCallback
 
 
 def objective(
@@ -74,7 +75,9 @@ def fit_trains_and_predict_next(
         with Pool() as pool:
             preds = pool.map(partial_predict, trains)
     else:
-        preds = [partial_predict(train) for train in trains]
+        preds = []
+        for train in tqdm(trains):
+            preds.append(partial_predict(train))
 
     return pd.Series(preds, index=test.index, name=test.name)
 
@@ -106,6 +109,7 @@ def tune_hyperparameters(
 
 def train_and_test_model():
     dataset_name = "AIR_PASSENGERS"
+
     # model_name = "RNN"
     # params = {"epochs": 700, "hidden_units": 25, "timesteps": 12}
     # model_name = "SARIMA"
@@ -117,23 +121,14 @@ def train_and_test_model():
     model_name = "SARIMA_SVR"
     params = {"svr_C": 0.011103136450426, "svr_kernel": "linear"}
 
-    n_train_points = 113
-
     filepath = f"src/data/results/{dataset_name}_{model_name}_{uuid4().hex}.csv"
 
+    dataset = DATASET_FACTORY_LOOKUP[dataset_name]()
+    model_class = ModelClassLookupCallback(model_name, dataset.period)
+
     with mlflow.start_run():
-        mlflow.log_param("dataset_name", dataset_name)
-        mlflow.log_param("model_name", model_name)
-        mlflow.log_param("params", params)
-        mlflow.log_param("n_train_points", n_train_points)
-
-        dataset = DATASET_FACTORY_LOOKUP[dataset_name]()
-        train = dataset
-
-        model_class = MODEL_CLASS_LOOKUP[model_name]
-
         trains, test = split_trains_test(
-            train, AnchoredSplitter(min_train_points=n_train_points)
+            dataset, AnchoredSplitter(min_train_points=dataset.train_size)
         )
         preds = fit_trains_and_predict_next(trains, test, model_class, params)
 
@@ -141,6 +136,11 @@ def train_and_test_model():
 
         for metric_name, value in results.items():
             mlflow.log_metric(metric_name, value)
+
+        mlflow.log_param("dataset_name", dataset_name)
+        mlflow.log_param("model_name", model_name)
+        mlflow.log_param("params", params)
+        mlflow.log_param("n_train_points", dataset.train_size)
 
         preds.to_csv(filepath)
         mlflow.log_artifact(filepath)
@@ -166,16 +166,15 @@ def get_best_study_params() -> dict:
 def tune_hyperparameters_with_optuna():
     dataset_name = "AIR_PASSENGERS"
     model_name = "SARIMA_SVR"
-    train_pct = 0.8
 
     study_name = f"{dataset_name}/{model_name}/v2"
 
     dataset = DATASET_FACTORY_LOOKUP[dataset_name]()
-    train = dataset.iloc[: int(len(dataset) * train_pct)]
+    train = dataset.iloc[: dataset.train_size]
 
     best_value, best_trial = tune_hyperparameters(
         study_name=study_name,
-        model_class=MODEL_CLASS_LOOKUP[model_name],
+        model_class=ModelClassLookupCallback(model_name, dataset.period),
         train=train,
         n_trials=100,
     )
@@ -184,9 +183,9 @@ def tune_hyperparameters_with_optuna():
 
 
 def main():
-    # tune_hyperparameters_with_optuna()
+    tune_hyperparameters_with_optuna()
     # get_best_study_params()
-    train_and_test_model()
+    # train_and_test_model()
 
 
 if __name__ == "__main__":

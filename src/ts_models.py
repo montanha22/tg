@@ -32,7 +32,7 @@ class SARIMAModel:
 
     @staticmethod
     def suggest_params(trial: optuna.Trial) -> Dict[str, int]:
-        return {"m": trial.suggest_categorical("m", [1, 4, 6, 12])}
+        return {}
 
 
 class SARIMASVRModel:
@@ -40,8 +40,9 @@ class SARIMASVRModel:
         self,
         svr_kernel: Literal["linear", "poly", "rbf", "sigmoid"],
         svr_C: float,
+        m: int,
     ):
-        self.arima_m = 12
+        self.arima_m = m
         self.svr_kernel = svr_kernel
         self.svr_C = svr_C
 
@@ -79,7 +80,7 @@ class SARIMASVRModel:
 
 
 class ARIMAModel:
-    def __init__(self):
+    def __init__(self, m: int = None):
         self.model = None
 
     def fit(self, y: pd.Series) -> None:
@@ -98,7 +99,7 @@ def stack_lags(x: np.ndarray, lags: int):
 
 
 class RNNModel:
-    def __init__(self, timesteps: int, hidden_units: int, epochs: int):
+    def __init__(self, timesteps: int, hidden_units: int, epochs: int, m: int = None):
         self.model = None
         self.timesteps = timesteps
         self.hidden_units = hidden_units
@@ -140,7 +141,7 @@ class RNNModel:
 
 
 class NaiveModel:
-    def __init__(self, constant: float):
+    def __init__(self, constant: float, m: int = None):
         self.constant = constant
         self.last_value = None
 
@@ -155,10 +156,24 @@ class NaiveModel:
         return {"constant": trial.suggest_uniform("constant", -1, 1)}
 
 
-MODEL_CLASS_LOOKUP: Dict[str, Type[OneAheadModel]] = {
+_MODEL_CLASS_LOOKUP: Dict[str, Type[OneAheadModel]] = {
     "SARIMA": SARIMAModel,
     "ARIMA": ARIMAModel,
     "RNN": RNNModel,
     "NAIVE": NaiveModel,
     "SARIMA_SVR": SARIMASVRModel,
 }
+
+
+class ModelClassLookupCallback:
+    def __init__(self, model_name: str, m: int):
+        if model_name not in _MODEL_CLASS_LOOKUP.keys():
+            raise KeyError("Invalid model (or not implemented yet)")
+        self.model_name = model_name
+        self.m = m
+
+    def __call__(self, **kwargs) -> OneAheadModel:
+        return _MODEL_CLASS_LOOKUP[self.model_name](m=self.m, **kwargs)
+
+    def suggest_params(self, trial: optuna.Trial) -> dict:
+        return _MODEL_CLASS_LOOKUP[self.model_name].suggest_params(trial)
