@@ -18,3 +18,4 @@
 /.venv2
 /_tg-seasonal-time-series
 __pycache__/
+.Rproj.user
