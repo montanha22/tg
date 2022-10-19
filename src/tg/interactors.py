@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Callable
+from typing import Callable, Type
 from uuid import uuid4
 
 import mlflow
@@ -42,6 +42,7 @@ class ModelInteractor:
         if tuning:
             slices = self.splitter.split(
                 self.dataset[:self.dataset.train_size])
+        
 
         train_indexes_list = [s[0] for s in slices]
         test_indexes_list = [s[1] for s in slices]
@@ -81,7 +82,7 @@ class ModelInteractor:
         if not hasattr(self, 'preds'):
             raise ValueError('You should fit_predict model first!')
 
-        if type(self.test) == tuple:
+        if isinstance(self.test, tuple):
             self.metrics = generate_all_metrics(
                 self.preds, self.test[0])
         else:
@@ -122,7 +123,7 @@ class ModelInteractor:
             study_name=study_name,
             direction="minimize",
             storage="sqlite:///{}".format(get_root_path("optuna.db")),
-            load_if_exists=True,
+            load_if_exists=False,
         )
 
         partial_objective = partial(
@@ -141,7 +142,7 @@ class ModelInteractor:
             study_name=study_name,
             direction="minimize",
             storage="sqlite:///{}".format(get_root_path("optuna.db")),
-            load_if_exists=True
+            load_if_exists=False
         )
         self.hyperparams_best_value = study.best_value
         self.hyperparams_best_trial = study.best_trial
@@ -149,7 +150,7 @@ class ModelInteractor:
     def _objective(self,
                    trial: optuna.Trial,
                    suggest_params: Callable[[optuna.Trial], dict],
-                   splitter: Splitter,
+                   splitter: Type[Splitter],
                    splitter_args: dict = {}) -> float:
 
         parameters = suggest_params(trial)
@@ -168,4 +169,5 @@ class ModelInteractor:
                      X: pd.DataFrame = pd.DataFrame()) -> float:
         model = self.model_class(**parameters)
         model.fit(y, X)
+        print(parameters, model.predict_one_ahead())
         return model.predict_one_ahead()

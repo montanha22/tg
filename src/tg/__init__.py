@@ -4,10 +4,12 @@ import yaml
 
 _ROOT = os.path.dirname(os.path.abspath(os.path.dirname('__file__')))
 
-def get_root_path(path:str):
+
+def get_root_path(path: str):
     return os.path.join(_ROOT, path)
 
-def get_data_path(path:str):
+
+def get_data_path(path: str):
     return os.path.join(_ROOT, 'src', 'data', path)
 
 
