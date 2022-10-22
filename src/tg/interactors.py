@@ -1,5 +1,6 @@
+import logging
 from functools import partial
-from typing import Callable, Type
+from typing import Callable, List, Tuple, Type, Union
 from uuid import uuid4
 
 import mlflow
@@ -13,6 +14,7 @@ from tg.datasets import DatasetFactoryLookupCallback
 from tg.metrics import generate_all_metrics
 from tg.splitters import Splitter
 from tg.ts_models import ModelClassLookupCallback
+from tg.utils import stack_lags
 
 
 class ModelInteractor:
@@ -21,153 +23,199 @@ class ModelInteractor:
 
         self.model_name = model_name
         self.model_class = ModelClassLookupCallback(model_name)
+        self._loaded = False
+        self._fitted = False
 
-    def load_time_series(self, dataset_name: str):
+    def load(self,
+             dataset_name: str,
+             y: pd.Series,
+             X: pd.DataFrame = None) -> None:
 
         self.dataset_name = dataset_name
         self.dataset = DatasetFactoryLookupCallback(dataset_name)()
+        self.y = y
+        self.X = X
+        self._loaded = True
 
-    def split_trains_test(self,
-                          splitter: Splitter,
-                          splitter_args: dict = {},
-                          X: pd.DataFrame = pd.DataFrame(),
-                          tuning=False) -> None:
+    def split_trains_test(
+        self,
+        y: pd.Series,
+        splitter_class: Type[Splitter],
+        splitter_args: dict = {},
+        X: pd.DataFrame = None
+    ) -> Union[Tuple[List[pd.Series], pd.Series], Tuple[List[Tuple[
+            pd.Series, pd.DataFrame]], Tuple[pd.Series, pd.DataFrame]]]:
 
-        if not hasattr(self, 'dataset'):
+        if not self._loaded:
             raise ValueError('You should load dataset first!')
 
-        self.splitter = splitter(**splitter_args)
-
-        slices = self.splitter.split(self.dataset)
-        if tuning:
-            slices = self.splitter.split(
-                self.dataset[:self.dataset.train_size])
-        
+        splitter = splitter_class(**splitter_args)
+        slices = splitter.split(y)
 
         train_indexes_list = [s[0] for s in slices]
         test_indexes_list = [s[1] for s in slices]
 
         indexes = np.array([idx[0] for idx in test_indexes_list])
 
-        y_trains = [self.dataset.loc[idx] for idx in train_indexes_list]
-        y_test = self.dataset.loc[indexes]
+        y_trains = [y.iloc[idx] for idx in train_indexes_list]
+        y_test = y.iloc[indexes]
 
-        if not X.empty:
-            X_trains = [X.loc[idx] for idx in train_indexes_list]
-            X_test = X.loc[indexes]
-            self.trains, self.test = (y_trains, X_trains), (y_test, X_test)
-        else:
-            self.trains, self.test = y_trains, y_test
+        if not self.model_class.single_input:
+            X_trains = [X.iloc[idx] for idx in train_indexes_list]
+            trains = list(zip(y_trains, X_trains))
+            X_test = X.iloc[indexes]
+            return trains, (y_test, X_test)
+        return y_trains, y_test
 
     def fit_predict(
-        self, parameters: dict, X: pd.DataFrame = pd.DataFrame()) -> None:
+        self,
+        trains: Union[List[pd.Series], List[Tuple[pd.Series, pd.DataFrame]]],
+        test: Union[pd.Series, Tuple[pd.Series, pd.DataFrame]],
+        parameters: dict,
+    ) -> pd.Series:
 
-        if not hasattr(self, 'trains'):
-            raise ValueError('You should split dataset first!')
-
-        partial_predict = partial(self._fit_predict, parameters)
+        partial_predict = partial(self._fit_predict, parameters=parameters)
 
         preds = []
-        for train in tqdm(self.trains):
-            if not X.empty:
+        for train in tqdm(trains, position=0, leave=True):
+            if not self.model_class.single_input:
                 preds.append(partial_predict(y=train[0], X=train[1]))
             else:
                 preds.append(partial_predict(y=train))
-        self.preds = pd.Series(preds,
-                               index=self.test.index,
-                               name=self.test.name)
 
-    def evaluate(self) -> None:
+        if not self.model_class.single_input:
+            return pd.Series(preds, index=test[0].index, name=test[0].name)
 
-        if not hasattr(self, 'preds'):
-            raise ValueError('You should fit_predict model first!')
+        return pd.Series(preds, index=test.index, name=test.name)
 
-        if isinstance(self.test, tuple):
-            self.metrics = generate_all_metrics(
-                self.preds, self.test[0])
-        else:
-            self.metrics = generate_all_metrics(self.preds, self.test)
+    def evaluate(
+            self, preds: pd.Series,
+            test: Union[pd.Series, Tuple[pd.Series, pd.DataFrame]]) -> None:
 
-    def execute_mlflow(
-        self, parameters: dict, X: pd.DataFrame = pd.DataFrame()) -> None:
+        if not self.model_class.single_input:
+            return generate_all_metrics(preds, test[0])
+        return generate_all_metrics(preds, test)
 
-        if not hasattr(self, 'dataset'):
+    def execute_mlflow(self,
+                       parameters: dict,
+                       splitter_class: Type[Splitter],
+                       splitter_args: dict = {}) -> dict:
+
+        if not self._loaded:
             raise ValueError('You should load dataset first!')
+        trains, test = self.split_trains_test(y=self.y,
+                                              splitter_class=splitter_class,
+                                              splitter_args=splitter_args,
+                                              X=self.X)
+        filepath = get_data_path(
+            f"results/{self.dataset_name}_{self.model_name}_{uuid4().hex}.csv")
 
-        filepath = get_data_path(f"results/{self.dataset_name}_{self.model_name}_{uuid4().hex}.csv")
+        mlflow.set_tracking_uri("file:///{}".format(get_root_path("mlruns")))
         with mlflow.start_run():
-            self.fit_predict(parameters, X)
-            self.evaluate()
 
-            for metric_name, value in self.metrics.items():
+            preds = self.fit_predict(trains=trains,
+                                     test=test,
+                                     parameters=parameters)
+            metrics = self.evaluate(preds=preds, test=test)
+
+            for metric_name, value in metrics.items():
                 mlflow.log_metric(metric_name, value)
 
             mlflow.log_param("dataset_name", self.dataset_name)
             mlflow.log_param("model_name", self.model_name)
             mlflow.log_param("params", parameters)
             mlflow.log_param("n_train_points", self.dataset.train_size)
-
-            self.preds.to_csv(filepath)
+            preds.to_csv(filepath)
             mlflow.log_artifact(filepath)
 
-    def tune_hyperparameters(self,
-                             splitter: Splitter,
-                             splitter_args: dict = {},
-                             n_trials: int = 5) -> None:
+        return metrics
 
-        if not hasattr(self, 'dataset'):
+    def tune_hyperparameters(self,
+                             splitter_class: Type[Splitter],
+                             splitter_args: dict = {},
+                             n_trials: int = 5) -> dict:
+
+        if not self._loaded:
             raise ValueError('You should load dataset first!')
 
-        study_name = f"{self.dataset_name}/{self.model_name}/v2"
+        if not self.model_class.tunable:
+            logging.warning(
+                f"Model {self.model_name} is not tunable. Returning default parameters."
+            )
+            return {}
+
+        study_name = f"{self.dataset_name}/{self.model_name}/v1"
         study = optuna.create_study(
             study_name=study_name,
             direction="minimize",
             storage="sqlite:///{}".format(get_root_path("optuna.db")),
-            load_if_exists=False,
+            load_if_exists=True,
         )
 
         partial_objective = partial(
             self._objective,
             suggest_params=self.model_class.suggest_params,
-            splitter=splitter,
+            splitter_class=splitter_class,
             splitter_args=splitter_args,
         )
         study.optimize(partial_objective, n_trials=n_trials)
-        self.hyperparams_best_value = study.best_value
-        self.hyperparams_best_trial = study.best_trial
+        return study.best_params
 
     def get_best_params(self) -> None:
-        study_name = f"{self.dataset_name}/{self.model_name}/v2"
-        study = optuna.create_study(
-            study_name=study_name,
-            direction="minimize",
-            storage="sqlite:///{}".format(get_root_path("optuna.db")),
-            load_if_exists=False
-        )
-        self.hyperparams_best_value = study.best_value
-        self.hyperparams_best_trial = study.best_trial
+        study_name = f"{self.dataset_name}/{self.model_name}/v1"
+        study = optuna.create_study(study_name=study_name,
+                                    direction="minimize",
+                                    storage="sqlite:///{}".format(
+                                        get_root_path("optuna.db")),
+                                    load_if_exists=True)
+        return study.best_params
 
     def _objective(self,
                    trial: optuna.Trial,
                    suggest_params: Callable[[optuna.Trial], dict],
-                   splitter: Type[Splitter],
+                   splitter_class: Type[Splitter],
                    splitter_args: dict = {}) -> float:
 
         parameters = suggest_params(trial)
-        self.split_trains_test(splitter=splitter,
-                               splitter_args=splitter_args,
-                               tuning=True)
-        self.fit_predict(parameters)
-        self.evaluate()
+        trains, test = self.split_trains_test(y=self.y,
+                                              splitter_class=splitter_class,
+                                              splitter_args=splitter_args,
+                                              X=self.X)
+        preds = self.fit_predict(trains=trains,
+                                 test=test,
+                                 parameters=parameters)
+        metrics = self.evaluate(preds=preds, test=test)
 
-        trial.set_user_attr("metrics", self.metrics)
-        return self.metrics['mape']
+        trial.set_user_attr("metrics", metrics)
+        return metrics['mape']
 
     def _fit_predict(self,
                      parameters: dict,
                      y: pd.Series,
-                     X: pd.DataFrame = pd.DataFrame()) -> float:
+                     X: pd.DataFrame = None) -> float:
         model = self.model_class(**parameters)
         model.fit(y, X)
-        print(parameters, model.predict_one_ahead())
         return model.predict_one_ahead()
+
+
+class DataInteractor:
+
+    def __init__(self, dataset_name: str) -> None:
+        self.y = DatasetFactoryLookupCallback(dataset_name)()
+
+    def get_data(self, model_name: str) -> Tuple[pd.Series, pd.DataFrame]:
+
+        if model_name == 'NAIVE':
+            return self.y, None
+
+        if model_name == 'ARIMA':
+            return self.y, None
+
+        if model_name == 'SARIMA':
+            return self.y, None
+
+        if model_name == 'RNN':
+            timesteps = self.y.period
+            X = pd.DataFrame(stack_lags(self.y, timesteps)[:, :-1])
+            y = self.y[timesteps:]
+            return y, X

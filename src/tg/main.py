@@ -77,7 +77,7 @@ def fit_trains_and_predict_next(
             preds = pool.map(partial_predict, trains)
     else:
         preds = []
-        for train in tqdm(trains):
+        for train in tqdm(trains, ):
             preds.append(partial_predict(train))
 
     return pd.Series(preds, index=test.index, name=test.name)

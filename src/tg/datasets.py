@@ -1,8 +1,10 @@
 import pandas as pd
 from tg import get_data_path
 
+
 class Dataset:
     train_size: int
+    tuning_train_size: int
     period: int
 
 
@@ -13,6 +15,7 @@ def _read_passengers_dataset() -> pd.Series:
     s = df["Passengers"]
     setattr(s, "period", 12)
     setattr(s, "train_size", 110)
+    setattr(s, "tuning_train_size", 40)
     return s
 
 
@@ -21,6 +24,7 @@ def _read_perfect_sine30() -> pd.Series:
     s = df["sine"]
     setattr(s, "period", 30)
     setattr(s, "train_size", 110)
+    setattr(s, "train_size", 40)
     return s
 
 
@@ -29,6 +33,7 @@ def _read_noisy_sine30() -> pd.Series:
     s = df["sine"]
     setattr(s, "period", 30)
     setattr(s, "train_size", 110)
+    setattr(s, "train_size", 40)
     return s
 
 

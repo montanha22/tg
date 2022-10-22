@@ -24,7 +24,7 @@ class AnchoredSplitter:
     def split(
             self, df: Union[pd.DataFrame,
                             pd.Series]) -> List[Tuple[pd.Index, pd.Index]]:
-        indices = df.index
+        indices = df.reset_index().index
         slices = []
         for i in range(self.min_train_points, len(indices), self.step):
             slices.append((indices[:i], indices[i:i + self.ahead]))
@@ -42,7 +42,7 @@ class WindowedSplitter:
     def split(
             self, df: Union[pd.DataFrame,
                             pd.Series]) -> List[Tuple[pd.Index, pd.Index]]:
-        indices = df.index
+        indices = df.reset_index().index
         slices = []
         for i in range(self.window, len(indices), self.step):
             slices.append(

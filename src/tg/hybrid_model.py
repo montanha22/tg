@@ -5,7 +5,7 @@ from statsmodels.tsa.tsatools import lagmat
 from src.models import OneAheadModel
 
 
-class HybridModel:
+class HybridModel(OneAheadModel):
 
     def __init__(self,
                  first_model: OneAheadModel,

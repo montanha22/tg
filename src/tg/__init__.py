@@ -2,7 +2,8 @@ import os
 
 import yaml
 
-_ROOT = os.path.dirname(os.path.abspath(os.path.dirname('__file__')))
+_ROOT = os.path.dirname(
+    os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 
 def get_root_path(path: str):
@@ -14,7 +15,7 @@ def get_data_path(path: str):
 
 
 def change_mlflow_yaml():
-    file_location = os.path.join(_ROOT, 'tg', 'mlruns', '0', 'meta.yaml')
+    file_location = os.path.join(_ROOT, 'mlruns', '0', 'meta.yaml')
 
     with open(file_location) as f:
         mlflow_yaml = yaml.safe_load(f)
