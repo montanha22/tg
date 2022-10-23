@@ -187,7 +187,7 @@ class ModelInteractor:
         metrics = self.evaluate(preds=preds, test=test)
 
         trial.set_user_attr("metrics", metrics)
-        return metrics['mape']
+        return metrics['rmse']
 
     def _fit_predict(self,
                      parameters: dict,

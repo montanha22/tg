@@ -8,7 +8,6 @@ import pandas as pd
 class OneAheadModel:
 
     single_input = True
-    min_fit_size = None
     tunable = False
 
     def __init__(self):

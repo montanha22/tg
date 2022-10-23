@@ -2,6 +2,7 @@ import os
 from typing import Dict, Type
 
 import keras
+import numpy as np
 import optuna
 import pandas as pd
 import pmdarima as pm
@@ -39,25 +40,24 @@ class NaiveModel(OneAheadModel):
 
 class ARIMAModel(OneAheadModel):
 
-    min_fit_size = 3
-
     def __init__(self):
         super().__init__()
 
     def fit(self, y: pd.Series, X: pd.DataFrame = None) -> OneAheadModel:
         self.model = pm.auto_arima(y, seasonal=False)
+        self.y = y
         self._is_fitted = True
         return self
 
     def predict_one_ahead(self) -> float:
         if not self._is_fitted:
             raise ValueError("Model not fitted yet.")
-        return self.model.predict(n_periods=1)[0]
+        return np.array(self.model.predict(n_periods=1))[0]
 
     def predict_residuals(self) -> pd.Series:
         if not self._is_fitted:
             raise ValueError("Model not fitted yet.")
-        return self.model.predict_in_sample() - self.model.y
+        return np.array(self.model.predict_in_sample() - self.y.values)
 
     @staticmethod
     def suggest_params(trial: optuna.Trial) -> Dict[str, int]:
@@ -70,16 +70,15 @@ class SARIMAModel(OneAheadModel):
         super().__init__()
         self.m = m
 
-    def fit(self, y: pd.Series, X: pd.DataFrame = pd.DataFrame()) -> None:
-        if not X.empty:
-            raise ValueError("SARIMA does not support exogenous variables")
+    def fit(self, y: pd.Series, X: pd.DataFrame = None) -> OneAheadModel:
         self.model = pm.auto_arima(y.values, seasonal=True, m=self.m)
         self._is_fitted = True
+        return self
 
     def predict_one_ahead(self) -> float:
         if not self._is_fitted:
             raise ValueError("Model not fitted yet")
-        return self.model.predict(n_periods=1)[0]
+        return np.array(self.model.predict(n_periods=1))[0]
 
     @staticmethod
     def suggest_params(trial: optuna.Trial) -> Dict[str, int]:
@@ -111,7 +110,7 @@ class RNNModel(OneAheadModel):
 
     def fit(self, y: pd.Series, X: pd.DataFrame) -> None:
         self.one_ahead_input = X.iloc[-1].shift(-1).fillna(
-            y[-1]).values.reshape(1, -1)
+            y.iloc[-1]).values.reshape(1, -1)
         self.model = self._create_model(shape=X.shape[1])
         self.model.fit(X.values, y.values, epochs=self.epochs, verbose=0)
 
@@ -141,7 +140,6 @@ class ModelClassLookupCallback:
             raise KeyError("Invalid model (or not implemented yet)")
         self.model_name = model_name
         self.single_input = _MODEL_CLASS_LOOKUP[model_name].single_input
-        self.min_fit_size = _MODEL_CLASS_LOOKUP[model_name].min_fit_size
         self.tunable = _MODEL_CLASS_LOOKUP[model_name].tunable
 
     def __call__(self, **kwargs) -> OneAheadModel:

@@ -6,8 +6,8 @@ from tg.splitters import AnchoredSplitter
 
 def main():
 
-    dataset_name = "AIR_PASSENGERS"
-    model_name = "ARIMA"
+    dataset_name = "PERFECT_SINE30"
+    model_name = "RNN"
 
     di = DataInteractor(dataset_name=dataset_name)
     y, X = di.get_data(model_name=model_name)

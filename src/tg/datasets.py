@@ -24,7 +24,7 @@ def _read_perfect_sine30() -> pd.Series:
     s = df["sine"]
     setattr(s, "period", 30)
     setattr(s, "train_size", 110)
-    setattr(s, "train_size", 40)
+    setattr(s, "tuning_train_size", 100)
     return s
 
 
@@ -33,7 +33,7 @@ def _read_noisy_sine30() -> pd.Series:
     s = df["sine"]
     setattr(s, "period", 30)
     setattr(s, "train_size", 110)
-    setattr(s, "train_size", 40)
+    setattr(s, "tuning_train_size", 100)
     return s
 
 
