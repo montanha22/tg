@@ -7,11 +7,12 @@ import mlflow
 import optuna
 import pandas as pd
 from tqdm import tqdm
+from old import models
 
-from tg import metrics, models
+from tg import metrics
 from tg.datasets import DATASET_FACTORY_LOOKUP
 from tg.splitters import AnchoredSplitter, Splitter
-from tg.ts_models import ModelClassLookupCallback
+from tg.models import ModelClassLookupCallback
 
 
 def objective(

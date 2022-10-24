@@ -19,7 +19,7 @@ tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 from keras import layers
 from sklearn.svm import SVR
-from tg.models import OneAheadModel
+from old.models import OneAheadModel
 
 
 class SARIMAModel:

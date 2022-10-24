@@ -10,11 +10,9 @@ import pandas as pd
 from tqdm import tqdm
 
 from tg import get_data_path, get_root_path
-from tg.datasets import DatasetFactoryLookupCallback
 from tg.metrics import generate_all_metrics
 from tg.splitters import Splitter
-from tg.ts_models import ModelClassLookupCallback
-from tg.utils import stack_lags
+from tg.models import ModelClassLookupCallback
 
 
 class ModelInteractor:
@@ -24,17 +22,19 @@ class ModelInteractor:
         self.model_name = model_name
         self.model_class = ModelClassLookupCallback(model_name)
         self._loaded = False
-        self._fitted = False
 
     def load(self,
-             dataset_name: str,
              y: pd.Series,
-             X: pd.DataFrame = None) -> None:
+             X: pd.DataFrame = None,
+             dataset_name: str = None,
+             timesteps: int = None,
+             train_size: int = None) -> None:
 
-        self.dataset_name = dataset_name
-        self.dataset = DatasetFactoryLookupCallback(dataset_name)()
         self.y = y
         self.X = X
+        self.dataset_name = dataset_name
+        self.timesteps = timesteps
+        self.train_size = train_size
         self._loaded = True
 
     def split_trains_test(
@@ -60,10 +60,14 @@ class ModelInteractor:
         y_trains = [y.iloc[idx] for idx in train_indexes_list]
         y_test = y.iloc[indexes]
 
-        if not self.model_class.single_input:
-            X_trains = [X.iloc[idx] for idx in train_indexes_list]
+        if not self.model_class.instance.single_input:
+            X_trains = [
+                X.iloc[np.append(np.array(idx),
+                                 np.max(idx) + 1)]
+                for idx in train_indexes_list
+            ]
             trains = list(zip(y_trains, X_trains))
-            X_test = X.iloc[indexes]
+            X_test = X.iloc[np.append(np.array(indexes), np.max(indexes) + 1)]
             return trains, (y_test, X_test)
         return y_trains, y_test
 
@@ -78,12 +82,12 @@ class ModelInteractor:
 
         preds = []
         for train in tqdm(trains, position=0, leave=True):
-            if not self.model_class.single_input:
+            if not self.model_class.instance.single_input:
                 preds.append(partial_predict(y=train[0], X=train[1]))
             else:
                 preds.append(partial_predict(y=train))
 
-        if not self.model_class.single_input:
+        if not self.model_class.instance.single_input:
             return pd.Series(preds, index=test[0].index, name=test[0].name)
 
         return pd.Series(preds, index=test.index, name=test.name)
@@ -92,7 +96,7 @@ class ModelInteractor:
             self, preds: pd.Series,
             test: Union[pd.Series, Tuple[pd.Series, pd.DataFrame]]) -> None:
 
-        if not self.model_class.single_input:
+        if not self.model_class.instance.single_input:
             return generate_all_metrics(preds, test[0])
         return generate_all_metrics(preds, test)
 
@@ -124,7 +128,7 @@ class ModelInteractor:
             mlflow.log_param("dataset_name", self.dataset_name)
             mlflow.log_param("model_name", self.model_name)
             mlflow.log_param("params", parameters)
-            mlflow.log_param("n_train_points", self.dataset.train_size)
+            mlflow.log_param("n_train_points", self.train_size)
             preds.to_csv(filepath)
             mlflow.log_artifact(filepath)
 
@@ -138,7 +142,7 @@ class ModelInteractor:
         if not self._loaded:
             raise ValueError('You should load dataset first!')
 
-        if not self.model_class.tunable:
+        if not self.model_class.instance.tunable:
             logging.warning(
                 f"Model {self.model_name} is not tunable. Returning default parameters."
             )
@@ -194,28 +198,5 @@ class ModelInteractor:
                      y: pd.Series,
                      X: pd.DataFrame = None) -> float:
         model = self.model_class(**parameters)
-        model.fit(y, X)
+        model.fit(y, X, self.timesteps)
         return model.predict_one_ahead()
-
-
-class DataInteractor:
-
-    def __init__(self, dataset_name: str) -> None:
-        self.y = DatasetFactoryLookupCallback(dataset_name)()
-
-    def get_data(self, model_name: str) -> Tuple[pd.Series, pd.DataFrame]:
-
-        if model_name == 'NAIVE':
-            return self.y, None
-
-        if model_name == 'ARIMA':
-            return self.y, None
-
-        if model_name == 'SARIMA':
-            return self.y, None
-
-        if model_name == 'RNN':
-            timesteps = self.y.period
-            X = pd.DataFrame(stack_lags(self.y, timesteps)[:, :-1])
-            y = self.y[timesteps:]
-            return y, X

@@ -20,7 +20,8 @@ def change_mlflow_yaml():
     with open(file_location) as f:
         mlflow_yaml = yaml.safe_load(f)
 
-    mlflow_yaml['artifact_location'] = os.path.dirname(file_location)
+    mlflow_yaml['artifact_location'] = 'file:///{}'.format(
+        os.path.dirname(file_location))
 
     with open(file_location, "w") as f:
         yaml.dump(mlflow_yaml, f)
