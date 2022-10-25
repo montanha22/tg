@@ -166,6 +166,13 @@ class ModelInteractor:
         return study.best_params
 
     def get_best_params(self) -> None:
+
+        if not self.model_class.instance.tunable:
+            logging.warning(
+                f"Model {self.model_name} is not tunable. Returning default parameters."
+            )
+            return {}
+
         study_name = f"{self.dataset_name}/{self.model_name}/v1"
         study = optuna.create_study(study_name=study_name,
                                     direction="minimize",
