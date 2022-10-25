@@ -8,7 +8,7 @@ from tg.splitters import AnchoredSplitter
 
 
 def _mlflow_run(model_name: str):
-    dataset_name = 'AIR_PASSENGERS'
+    dataset_name = 'NOISY_SINE30'
     data_factory = DatasetFactoryLookupCallback(dataset_name=dataset_name)
 
     y, X = data_factory(model_name=model_name)
@@ -25,12 +25,12 @@ def _mlflow_run(model_name: str):
         splitter_args={
             'min_train_points': data_factory.dataset.tuning_train_size
         },
-        n_trials=50)
+        n_trials=100)
 
-    mi.execute_mlflow(
-        splitter_class=AnchoredSplitter,
-        splitter_args={'min_train_points': data_factory.dataset.train_size},
-        parameters=best_params)
+    # mi.execute_mlflow(
+    #     splitter_class=AnchoredSplitter,
+    #     splitter_args={'min_train_points': data_factory.dataset.train_size},
+    #     parameters=best_params)
 
 
 def main():

@@ -1,0 +1,15 @@
+artifact_uri: file:///Users/rafael.bernardes/Documents/GitHub/tg/mlruns/0/b40b866a76dd4a469f16ab95b31103c3/artifacts
+end_time: 1666622098404
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+name: ''
+run_id: b40b866a76dd4a469f16ab95b31103c3
+run_uuid: b40b866a76dd4a469f16ab95b31103c3
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1666621669008
+status: 3
+tags: []
+user_id: rafael.bernardes

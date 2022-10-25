@@ -67,15 +67,14 @@ class ARIMAModel(OneAheadModel):
 
 class SARIMAModel(OneAheadModel):
 
-    def __init__(self, m: int):
+    def __init__(self):
         super().__init__()
-        self.m = m
 
     def fit(self,
             y: pd.Series,
             X: pd.DataFrame = None,
             timesteps=None) -> OneAheadModel:
-        self.model = pm.auto_arima(y.values, seasonal=True, m=self.m)
+        self.model = pm.auto_arima(y.values, seasonal=True, m=timesteps)
         self.y = y
         self._is_fitted = True
         return self
@@ -201,10 +200,10 @@ class SARIMASVRModel(HybridModel):
 
     tunable = True
 
-    def __init__(self, m: int, C: float, epsilon: float,
+    def __init__(self, C: float, epsilon: float,
                  kernel: Literal["linear", "poly", "rbf", "sigmoid"]) -> None:
         super().__init__(SARIMAModel, SVRModel, method='residue')
-        self.first_model = SARIMAModel(m=m)
+        self.first_model = SARIMAModel()
         self.second_model = SVRModel(C=C, epsilon=epsilon, kernel=kernel)
 
     def fit(self,
