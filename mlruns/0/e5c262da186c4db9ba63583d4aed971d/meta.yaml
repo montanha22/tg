@@ -1,0 +1,15 @@
+artifact_uri: file:///C:\Users\Rafa\Documents\Github\tg\mlruns\0/e5c262da186c4db9ba63583d4aed971d/artifacts
+end_time: 1666817939957
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+name: ''
+run_id: e5c262da186c4db9ba63583d4aed971d
+run_uuid: e5c262da186c4db9ba63583d4aed971d
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1666817861316
+status: 3
+tags: []
+user_id: Rafa

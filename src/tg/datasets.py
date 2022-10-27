@@ -41,10 +41,22 @@ def _read_noisy_sine30() -> Dataset:
     return s
 
 
+def _read_homicides() -> Dataset:
+    df = pd.read_csv(get_data_path("raw/homicides.csv"),
+                     parse_dates=["Month"],
+                     index_col="Month")
+    s = df["Homicides"]
+    setattr(s, "period", 12)
+    setattr(s, "train_size", 120)
+    setattr(s, "tuning_train_size", 110)
+    return s
+
+
 DATASET_FACTORY_LOOKUP = {
     "AIR_PASSENGERS": _read_passengers_dataset,
     "PERFECT_SINE30": _read_perfect_sine30,
     "NOISY_SINE30": _read_noisy_sine30,
+    "HOMICIDES": _read_homicides,
 }
 
 
@@ -65,6 +77,8 @@ INPUT_FACTORY_LOOKUP = {
     'SARIMA': _get_default_input,
     'RNN': _get_lagged_input,
     'SVR': _get_lagged_input,
+    'ELM': _get_lagged_input,
+    'STL': _get_default_input,
     'ARIMA_RNN': _get_default_input,
     'SARIMA_SVR': _get_default_input,
 }

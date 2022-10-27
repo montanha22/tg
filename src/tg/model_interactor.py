@@ -11,8 +11,8 @@ from tqdm import tqdm
 
 from tg import get_data_path, get_root_path
 from tg.metrics import generate_all_metrics
-from tg.splitters import Splitter
 from tg.models import ModelClassLookupCallback
+from tg.splitters import Splitter
 
 
 class ModelInteractor:

@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Type
+from typing import Literal, Type
 
 import numpy as np
 import optuna
@@ -35,10 +35,11 @@ class OneAheadModel:
 
 class HybridModel(OneAheadModel):
 
-    def __init__(self,
-                 first_model_class: Type[OneAheadModel],
-                 second_model_class: Type[OneAheadModel],
-                 method: str = 'residue') -> None:
+    def __init__(
+            self,
+            first_model_class: Type[OneAheadModel],
+            second_model_class: Type[OneAheadModel],
+            method: Literal['residue', 'decomposition'] = 'residue') -> None:
         super().__init__()
         self.first_model_class = first_model_class
         self.second_model_class = second_model_class
@@ -59,6 +60,15 @@ class HybridModel(OneAheadModel):
             y_lagged = stack_lags(y[1:], timesteps)
             X = pd.DataFrame(np.hstack([y_residuals, y_lagged]))
             y = y[timesteps + 1:]
+            self.second_model.fit(y=y, X=X, timesteps=timesteps)
+
+        elif self.method == 'decomposition':
+            self.first_model.fit(y=y, X=X, timesteps=timesteps)
+            seasonal_pred = self.first_model.predict_seasonal_one_ahead()
+            trend_component = self.first_model.get_trend()
+            residual_component = self.first_model.get_residuals()
+            
+            y = y - first_model_forecast
             self.second_model.fit(y=y, X=X, timesteps=timesteps)
 
     def predict_one_ahead(self) -> float:
