@@ -6,9 +6,12 @@ import optuna
 import pandas as pd
 import pmdarima as pm
 from keras import layers
+from keras.callbacks import EarlyStopping
 from skelm import ELMRegressor
+from sklearn.preprocessing import MinMaxScaler
 from sklearn.svm import SVR
 from sktime.forecasting.trend import STLForecaster
+from statsmodels.tsa.api import ExponentialSmoothing
 
 from tg.model_interfaces import HybridModel, OneAheadModel
 
@@ -24,7 +27,8 @@ class NaiveModel(OneAheadModel):
     def fit(self,
             y: pd.Series,
             X: pd.DataFrame = None,
-            timesteps=None) -> None:
+            timesteps=None,
+            stack_size: int = None) -> None:
         self.last_value = y.values[-1]
         self._is_fitted = True
 
@@ -46,7 +50,8 @@ class ARIMAModel(OneAheadModel):
     def fit(self,
             y: pd.Series,
             X: pd.DataFrame = None,
-            timesteps=None) -> OneAheadModel:
+            timesteps=None,
+            stack_size: int = None) -> OneAheadModel:
         self.model = pm.auto_arima(y, seasonal=False)
         self.y = y
         self._is_fitted = True
@@ -60,7 +65,7 @@ class ARIMAModel(OneAheadModel):
     def predict_residuals(self) -> pd.Series:
         if not self._is_fitted:
             raise ValueError("Model not fitted yet.")
-        return np.array(self.model.predict_in_sample() - self.y.values)
+        return self.y.values - np.array(self.model.predict_in_sample())
 
     @staticmethod
     def suggest_params(trial: optuna.Trial) -> Dict[str, int]:
@@ -75,7 +80,8 @@ class SARIMAModel(OneAheadModel):
     def fit(self,
             y: pd.Series,
             X: pd.DataFrame = None,
-            timesteps=None) -> OneAheadModel:
+            timesteps=None,
+            stack_size: int = None) -> OneAheadModel:
         self.model = pm.auto_arima(y.values, seasonal=True, m=timesteps)
         self.y = y
         self._is_fitted = True
@@ -120,7 +126,11 @@ class RNNModel(OneAheadModel):
         model.compile(optimizer="adam", loss="mse")
         return model
 
-    def fit(self, y: pd.Series, X: pd.DataFrame, timesteps=None) -> None:
+    def fit(self,
+            y: pd.Series,
+            X: pd.DataFrame,
+            timesteps=None,
+            stack_size: int = None) -> None:
 
         if len(X) - len(y) != 1:
             raise ValueError("X must be one timestep longer than y")
@@ -128,8 +138,11 @@ class RNNModel(OneAheadModel):
         self.one_ahead_input, X = X.iloc[-1].values.reshape(1, -1), X.iloc[:-1]
         self.model = self._create_model(shape=X.shape[1])
         self.model.fit(X.values, y.values, epochs=self.epochs, verbose=0)
+        self._is_fitted = True
 
     def predict_one_ahead(self) -> float:
+        if not self._is_fitted:
+            raise ValueError("Model must be fitted before predicting")
         return self.model.predict(self.one_ahead_input).reshape(-1)[0]
 
     @staticmethod
@@ -151,7 +164,11 @@ class SVRModel(OneAheadModel):
         self.epsilon = epsilon
         self.kernel = kernel
 
-    def fit(self, y: pd.Series, X: pd.DataFrame, timesteps=None) -> None:
+    def fit(self,
+            y: pd.Series,
+            X: pd.DataFrame,
+            timesteps=None,
+            stack_size: int = None) -> None:
 
         if len(X) - len(y) != 1:
             raise ValueError("X must be one timestep longer than y")
@@ -195,7 +212,11 @@ class ELMModel(OneAheadModel):
         self.density = density
         self.pairwise_metric = pairwise_metric
 
-    def fit(self, y: pd.Series, X: pd.DataFrame, timesteps=None) -> None:
+    def fit(self,
+            y: pd.Series,
+            X: pd.DataFrame,
+            timesteps=None,
+            stack_size: int = None) -> None:
 
         if len(X) - len(y) != 1:
             raise ValueError("X must be one timestep longer than y")
@@ -260,7 +281,8 @@ class STLModel(OneAheadModel):
     def fit(self,
             y: pd.Series,
             X: pd.DataFrame = None,
-            timesteps: int = None) -> None:
+            timesteps: int = None,
+            stack_size: int = None) -> None:
 
         if not timesteps:
             raise ValueError("timesteps must be provided")
@@ -294,17 +316,17 @@ class STLModel(OneAheadModel):
     def predict_trend_one_ahead(self) -> float:
         if not self._is_fitted:
             raise ValueError("Model must be fitted before predicting")
-        return self.model.forecaster_trend_.predict(fh=[1])[0]
+        return self.model.forecaster_trend_.predict(fh=[1]).iloc[0]
 
     def predict_seasonal_one_ahead(self) -> float:
         if not self._is_fitted:
             raise ValueError("Model must be fitted before predicting")
-        return self.model.forecaster_seasonal_.predict(fh=[1])[0]
+        return self.model.forecaster_seasonal_.predict(fh=[1]).iloc[0]
 
     def predict_residuals_one_ahead(self) -> float:
         if not self._is_fitted:
             raise ValueError("Model must be fitted before predicting")
-        return self.model.forecaster_resid_.predict(fh=[1])[0]
+        return self.model.forecaster_resid_.predict(fh=[1]).iloc[0]
 
     @staticmethod
     def suggest_params(trial: optuna.Trial) -> dict:
@@ -328,6 +350,146 @@ class STLModel(OneAheadModel):
         }
 
 
+class ESModel(OneAheadModel):
+
+    tunable = True
+
+    def __init__(self,
+                 trend: str = "add",
+                 damped_trend: bool = False,
+                 seasonal: str = None):
+        super().__init__()
+        self.trend = trend
+        self.damped_trend = damped_trend
+        self.seasonal = seasonal
+
+    def fit(self,
+            y: pd.Series,
+            X: pd.DataFrame = None,
+            timesteps: int = None,
+            stack_size: int = None) -> None:
+
+        if not timesteps:
+            raise ValueError("timesteps must be provided")
+
+        self.y = y
+        self.model = ExponentialSmoothing(y.values,
+                                          trend=self.trend,
+                                          damped_trend=self.damped_trend,
+                                          seasonal=self.seasonal,
+                                          seasonal_periods=timesteps)
+        self.model = self.model.fit(optimized=True, use_brute=True)
+        self._is_fitted = True
+
+    def predict_one_ahead(self) -> float:
+        if not self._is_fitted:
+            raise ValueError("Model must be fitted before predicting")
+        return self.model.forecast(1)[0]
+
+    def predict_residuals(self) -> float:
+        if not self._is_fitted:
+            raise ValueError("Model must be fitted before predicting")
+        return self.y - self.model.predict(start=0, end=len(self.y) - 1)
+
+    @staticmethod
+    def suggest_params(trial: optuna.Trial) -> dict:
+        trend = trial.suggest_categorical("trend", ['add', 'mul'])
+        damped_trend = trial.suggest_categorical("damped_trend", [True, False])
+        seasonal = trial.suggest_categorical("seasonal", ['add', 'mul', None])
+        return {
+            "trend": trend,
+            "damped_trend": damped_trend,
+            "seasonal": seasonal,
+        }
+
+
+class LSTMModel(OneAheadModel):
+
+    single_input = False
+    tunable = True
+
+    def __init__(self,
+                 n_neurons: int = 10,
+                 n_layers: int = 1,
+                 dropout: float = 0.0,
+                 optimizer: str = "adam",
+                 loss: str = "mse",
+                 epochs: int = 10,
+                 batch_size: int = 1):
+        super().__init__()
+        self.n_neurons = n_neurons
+        self.n_layers = n_layers
+        self.dropout = dropout
+        self.optimizer = optimizer
+        self.loss = loss
+        self.epochs = epochs
+        self.batch_size = batch_size
+
+    def fit(self,
+            y: pd.Series,
+            X: pd.DataFrame = None,
+            timesteps: int = None,
+            stack_size: int = None) -> None:
+
+        if not timesteps:
+            raise ValueError("timesteps must be provided")
+
+        if len(X) - len(y) != 1:
+            raise ValueError("X must be one timestep longer than y")
+
+        X = pd.DataFrame(MinMaxScaler().fit_transform(X))
+        self.y_scaler = MinMaxScaler().fit(y.values.reshape(-1, 1))
+        y = pd.Series(
+            self.y_scaler.transform(y.values.reshape(-1, 1)).reshape(-1))
+        self.one_ahead_input, X = X.iloc[-1].values.reshape(
+            -1, 1, X.shape[1]), X.iloc[:-1]
+        self.model = keras.Sequential()
+        for i in range(self.n_layers):
+            if i == 0:
+                self.model.add(
+                    layers.LSTM(self.n_neurons,
+                                input_shape=(1, X.shape[1]),
+                                return_sequences=True))
+            else:
+                self.model.add(
+                    layers.LSTM(self.n_neurons, return_sequences=True))
+        self.model.add(layers.LSTM(self.n_neurons))
+        self.model.add(layers.Dropout(self.dropout))
+        self.model.add(layers.Dense(1))
+        self.model.compile(optimizer=self.optimizer, loss=self.loss)
+        self.model.fit(X.values.reshape(-1, 1, X.shape[1]),
+                       y.values,
+                       epochs=self.epochs,
+                       batch_size=self.batch_size,
+                       verbose=0)
+        self._is_fitted = True
+
+    def predict_one_ahead(self) -> float:
+        if not self._is_fitted:
+            raise ValueError("Model must be fitted before predicting")
+        return self.y_scaler.inverse_transform(
+            self.model.predict(self.one_ahead_input))[0][0]
+
+    @staticmethod
+    def suggest_params(trial: optuna.Trial) -> dict:
+        n_neurons = trial.suggest_int("n_neurons", 1, 100)
+        n_layers = trial.suggest_int("n_layers", 1, 10)
+        dropout = trial.suggest_float("dropout", 0.0, 0.5)
+        optimizer = trial.suggest_categorical("optimizer", ["adam", "sgd"])
+        loss = trial.suggest_categorical("loss", ["mse", "mae"])
+        epochs = trial.suggest_int("epochs", 10, 200, 10)
+        batch_size = trial.suggest_int("batch_size", 1, 100)
+        return {
+            "n_neurons": n_neurons,
+            "n_layers": n_layers,
+            "dropout": dropout,
+            "optimizer": optimizer,
+            "loss": loss,
+            "epochs": epochs,
+            "batch_size": batch_size
+        }
+
+
 class ARIMARNNModel(HybridModel):
 
     tunable = True
@@ -340,8 +502,9 @@ class ARIMARNNModel(HybridModel):
     def fit(self,
             y: pd.Series,
             X: pd.DataFrame = None,
-            timesteps: int = None) -> None:
-        super().fit(y=y, X=X, timesteps=timesteps)
+            timesteps: int = None,
+            stack_size: int = None) -> None:
+        super().fit(y=y, X=X, timesteps=timesteps, stack_size=stack_size)
 
     def predict_one_ahead(self) -> float:
         return super().predict_one_ahead()
@@ -367,8 +530,9 @@ class SARIMASVRModel(HybridModel):
     def fit(self,
             y: pd.Series,
             X: pd.DataFrame = None,
-            timesteps: int = None) -> None:
-        super().fit(y=y, X=X, timesteps=timesteps)
+            timesteps: int = None,
+            stack_size: int = None) -> None:
+        super().fit(y=y, X=X, timesteps=timesteps, stack_size=stack_size)
 
     def predict_one_ahead(self) -> float:
         return super().predict_one_ahead()
@@ -381,6 +545,163 @@ class SARIMASVRModel(HybridModel):
         }
 
 
+class STLELMModel(HybridModel):
+
+    tunable = True
+
+    def __init__(
+        self,
+        alpha_trend: float,
+        n_neurons_trend: int,
+        alpha_residual: float,
+        n_neurons_residual: int,
+        seasonal: int = 7,
+        seasonal_deg: int = 1,
+        trend_deg: int = 1,
+        low_pass_deg: int = 1,
+        seasonal_jump: int = 1,
+        trend_jump: int = 1,
+        low_pass_jump: int = 1,
+        robust: bool = False,
+        ufunc_trend: Literal['tanh', 'sigm', 'relu', 'lin'] = 'tanh',
+        include_original_features_trend: bool = False,
+        density_trend: float = 1,
+        pairwise_metric_trend: Literal['euclidean', 'cityblock',
+                                       'cosine'] = 'euclidean',
+        ufunc_residual: Literal['tanh', 'sigm', 'relu', 'lin'] = 'tanh',
+        include_original_features_residual: bool = False,
+        density_residual: float = 1,
+        pairwise_metric_residual: Literal['euclidean', 'cityblock',
+                                          'cosine'] = 'euclidean'
+    ) -> None:
+        super().__init__(STLModel, ELMModel, method='decomposition')
+        self.first_model = STLModel(seasonal=seasonal,
+                                    seasonal_deg=seasonal_deg,
+                                    trend_deg=trend_deg,
+                                    low_pass_deg=low_pass_deg,
+                                    seasonal_jump=seasonal_jump,
+                                    trend_jump=trend_jump,
+                                    low_pass_jump=low_pass_jump,
+                                    robust=robust)
+        self.second_model = ELMModel(alpha=alpha_trend,
+                                     n_neurons=n_neurons_trend)
+        self.trend_model = ELMModel(
+            alpha=alpha_trend,
+            n_neurons=n_neurons_trend,
+            ufunc=ufunc_trend,
+            include_original_features=include_original_features_trend,
+            density=density_trend,
+            pairwise_metric=pairwise_metric_trend)
+        self.residual_model = ELMModel(
+            alpha=alpha_residual,
+            n_neurons=n_neurons_residual,
+            ufunc=ufunc_residual,
+            include_original_features=include_original_features_residual,
+            density=density_residual,
+            pairwise_metric=pairwise_metric_residual)
+
+    def fit(self,
+            y: pd.Series,
+            X: pd.DataFrame = None,
+            timesteps: int = None,
+            stack_size: int = None) -> None:
+        super().fit(y=y, X=X, timesteps=timesteps, stack_size=stack_size)
+
+    def predict_one_ahead(self) -> float:
+        return super().predict_one_ahead()
+
+    @staticmethod
+    def suggest_params(trial: optuna.Trial) -> dict:
+        return {
+            **STLModel.suggest_params(trial),
+            **{
+                'alpha_trend':
+                trial.suggest_loguniform("alpha_trend", 1e-7, 1e7),
+                'n_neurons_trend':
+                trial.suggest_int("n_neurons_trend", 5, 150, 5),
+                'ufunc_trend':
+                trial.suggest_categorical("ufunc_trend", [
+                    'tanh', 'sigm', 'relu', 'lin'
+                ]),
+                'include_original_features_trend':
+                trial.suggest_categorical("include_original_features_trend", [
+                    True, False
+                ]),
+                'density_trend':
+                trial.suggest_uniform("density_trend", 0.1, 1.0),
+                'pairwise_metric_trend':
+                trial.suggest_categorical("pairwise_metric_trend", [
+                    'euclidean', 'cityblock', 'cosine'
+                ])
+            },
+            **{
+                'alpha_residual':
+                trial.suggest_loguniform("alpha_residual", 1e-7, 1e7),
+                'n_neurons_residual':
+                trial.suggest_int("n_neurons_residual", 5, 150, 5),
+                'ufunc_residual':
+                trial.suggest_categorical("ufunc_residual", [
+                    'tanh', 'sigm', 'relu', 'lin'
+                ]),
+                'include_original_features_residual':
+                trial.suggest_categorical("include_original_features_residual", [
+                    True, False
+                ]),
+                'density_residual':
+                trial.suggest_uniform("density_residual", 0.1, 1.0),
+                'pairwise_metric_residual':
+                trial.suggest_categorical("pairwise_metric_residual", [
+                    'euclidean', 'cityblock', 'cosine'
+                ])
+            }
+        }
+
+
+class ESLSTMModel(HybridModel):
+
+    tunable = True
+
+    def __init__(self,
+                 trend: str = "add",
+                 damped_trend: bool = False,
+                 seasonal: str = None,
+                 n_neurons: int = 10,
+                 n_layers: int = 1,
+                 dropout: float = 0.0,
+                 optimizer: str = "adam",
+                 loss: str = "mse",
+                 epochs: int = 10,
+                 batch_size: int = 1) -> None:
+        super().__init__(ESModel, LSTMModel, method='residue')
+        self.first_model = ESModel(trend=trend,
+                                   damped_trend=damped_trend,
+                                   seasonal=seasonal)
+        self.second_model = LSTMModel(n_neurons=n_neurons,
+                                      n_layers=n_layers,
+                                      dropout=dropout,
+                                      optimizer=optimizer,
+                                      loss=loss,
+                                      epochs=epochs,
+                                      batch_size=batch_size)
+
+    def fit(self,
+            y: pd.Series,
+            X: pd.DataFrame = None,
+            timesteps: int = None,
+            stack_size: int = None) -> None:
+        super().fit(y=y, X=X, timesteps=timesteps, stack_size=stack_size)
+
+    def predict_one_ahead(self) -> float:
+        return super().predict_one_ahead()
+
+    @staticmethod
+    def suggest_params(trial: optuna.Trial) -> dict:
+        return {
+            **ESModel.suggest_params(trial),
+            **LSTMModel.suggest_params(trial)
+        }
+
+
 _MODEL_CLASS_LOOKUP: Dict[str, Type[OneAheadModel]] = {
     'NAIVE': NaiveModel,
     'ARIMA': ARIMAModel,
@@ -389,8 +710,12 @@ _MODEL_CLASS_LOOKUP: Dict[str, Type[OneAheadModel]] = {
     'SVR': SVRModel,
     'ELM': ELMModel,
     'STL': STLModel,
+    'ES': ESModel,
+    'LSTM': LSTMModel,
     'ARIMA_RNN': ARIMARNNModel,
     'SARIMA_SVR': SARIMASVRModel,
+    'STL_ELM': STLELMModel,
+    'ES_LSTM': ESLSTMModel
 }
 
 

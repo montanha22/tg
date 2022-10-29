@@ -6,6 +6,11 @@ from tg.splitters import AnchoredSplitter
 
 DATASET_NAME = 'AIR_PASSENGERS'
 DATA_FACTORY = DatasetFactoryLookupCallback(dataset_name=DATASET_NAME)
+# "AIR_PASSENGERS"
+# "PERFECT_SINE30"
+# "NOISY_SINE30"
+# "HOMICIDES"
+# 'RANDOM_WALK'
 
 
 def _execute(model_name: str):
@@ -15,7 +20,8 @@ def _execute(model_name: str):
             X=X,
             dataset_name=DATA_FACTORY.dataset_name,
             timesteps=DATA_FACTORY.dataset.period,
-            train_size=DATA_FACTORY.dataset.train_size)
+            train_size=DATA_FACTORY.dataset.train_size,
+            stack_size=DATA_FACTORY.dataset.stack_size)
     mi.execute_mlflow(
         splitter_class=AnchoredSplitter,
         splitter_args={'min_train_points': DATA_FACTORY.dataset.train_size},
@@ -34,13 +40,14 @@ def _tune(model_name: str):
             X=X,
             dataset_name=DATA_FACTORY.dataset_name,
             timesteps=DATA_FACTORY.dataset.period,
-            train_size=DATA_FACTORY.dataset.train_size)
+            train_size=DATA_FACTORY.dataset.train_size,
+            stack_size=DATA_FACTORY.dataset.stack_size)
     mi.tune_hyperparameters(splitter_class=AnchoredSplitter,
                             splitter_args={
                                 'min_train_points':
                                 DATA_FACTORY.dataset.tuning_train_size
                             },
-                            n_trials=20)
+                            n_trials=50)
 
 
 def parallel_hyperparameter_tuning(models: list):
@@ -51,11 +58,13 @@ def parallel_hyperparameter_tuning(models: list):
 def main():
 
     models = [
-        'NAIVE', 'ARIMA', 'SARIMA', 'RNN', 'SVR', 'ARIMA_RNN', 'SARIMA_SVR'
+        'NAIVE', 'ARIMA', 'SARIMA', 'RNN', 'SVR', 'ELM', 'STL', 'ES', 'LSTM',
+        'ARIMA_RNN', 'SARIMA_SVR', 'STL_ELM', 'ES_LSTM'
     ]
+    # models = ['ARIMA_RNN', 'SARIMA_SVR', 'STL_ELM', 'ES_LSTM']
 
-    parallel_hyperparameter_tuning(models=models)
-    # execute_mlflow(models=models)
+    # parallel_hyperparameter_tuning(models=models)
+    execute_mlflow(models=models)
 
 
 if __name__ == "__main__":

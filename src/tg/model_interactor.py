@@ -28,13 +28,15 @@ class ModelInteractor:
              X: pd.DataFrame = None,
              dataset_name: str = None,
              timesteps: int = None,
-             train_size: int = None) -> None:
+             train_size: int = None,
+             stack_size: int = None) -> None:
 
         self.y = y
         self.X = X
         self.dataset_name = dataset_name
         self.timesteps = timesteps
         self.train_size = train_size
+        self.stack_size = stack_size
         self._loaded = True
 
     def split_trains_test(
@@ -205,5 +207,5 @@ class ModelInteractor:
                      y: pd.Series,
                      X: pd.DataFrame = None) -> float:
         model = self.model_class(**parameters)
-        model.fit(y, X, self.timesteps)
+        model.fit(y, X, self.timesteps, self.stack_size)
         return model.predict_one_ahead()
