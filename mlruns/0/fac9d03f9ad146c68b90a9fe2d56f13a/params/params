@@ -1,0 +1,1 @@
+{'alpha': 0.10729919393017114, 'density': 0.65, 'include_original_features': False, 'low_pass_deg': 0, 'low_pass_jump': 6, 'n_neurons': 70, 'pairwise_metric': 'cityblock', 'robust': True, 'seasonal': 89, 'seasonal_deg': 1, 'seasonal_jump': 3, 'trend_deg': 1, 'trend_jump': 6, 'ufunc': 'relu'}

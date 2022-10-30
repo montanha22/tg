@@ -110,7 +110,7 @@ class DatasetFactoryLookupCallback:
         if dataset_name not in DATASET_FACTORY_LOOKUP.keys():
             raise KeyError("Invalid dataset (or not implemented yet)")
         self.dataset_name = dataset_name
-        self.dataset = DATASET_FACTORY_LOOKUP[dataset_name]()
+        self.dataset = DATASET_FACTORY_LOOKUP[dataset_name]
 
     def __call__(self,
                  model_name: str = None) -> Tuple[pd.Series, pd.DataFrame]:
@@ -121,4 +121,4 @@ class DatasetFactoryLookupCallback:
         if model_name not in INPUT_FACTORY_LOOKUP.keys():
             raise KeyError("Invalid model (or not implemented yet)")
 
-        return INPUT_FACTORY_LOOKUP[model_name](self.dataset)
+        return INPUT_FACTORY_LOOKUP[model_name](self.dataset())

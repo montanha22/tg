@@ -51,6 +51,10 @@ class ModelInteractor:
         if not self._loaded:
             raise ValueError('You should load dataset first!')
 
+        if not self.model_class.instance.single_input:
+            if 'min_train_points' in list(splitter_args.keys()):
+                splitter_args['min_train_points'] = splitter_args[
+                    'min_train_points'] - self.stack_size
         splitter = splitter_class(**splitter_args)
         slices = splitter.split(y)
 
