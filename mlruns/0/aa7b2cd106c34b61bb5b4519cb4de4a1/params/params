@@ -1,0 +1,1 @@
+{'alpha': 3.9643116953597644, 'density': 0.35, 'include_original_features': True, 'n_neurons': 35, 'pairwise_metric': 'cosine', 'ufunc': 'lin'}

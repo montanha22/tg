@@ -51,7 +51,7 @@ class ARIMAModel(OneAheadModel):
             X: pd.DataFrame = None,
             timesteps=None,
             stack_size: int = None) -> OneAheadModel:
-        self.model = pm.auto_arima(y, seasonal=False)
+        self.model = pm.auto_arima(y.values, seasonal=False)
         self.y = y
         self._is_fitted = True
         return self
@@ -80,11 +80,11 @@ class SARIMAModel(OneAheadModel):
             y: pd.Series,
             X: pd.DataFrame = None,
             timesteps=None,
-            stack_size: int = None) -> OneAheadModel:
+            stack_size: int = None) -> None:
+
         self.model = pm.auto_arima(y.values, seasonal=True, m=timesteps)
         self.y = y
         self._is_fitted = True
-        return self
 
     def predict_one_ahead(self) -> float:
         if not self._is_fitted:
@@ -311,7 +311,7 @@ class STLModel(OneAheadModel):
     def predict_one_ahead(self) -> float:
         if not self._is_fitted:
             raise ValueError("Model must be fitted before predicting")
-        return self.model.predict(fh=[1])[0]
+        return self.model.predict(fh=[1])[0][0]
 
     def predict_trend_one_ahead(self) -> float:
         if not self._is_fitted:
@@ -373,11 +373,12 @@ class ESModel(OneAheadModel):
             raise ValueError("timesteps must be provided")
 
         self.y = y
-        self.model = ExponentialSmoothing(y.values,
-                                          trend=self.trend,
-                                          damped_trend=self.damped_trend,
-                                          seasonal=self.seasonal,
-                                          seasonal_periods=timesteps)
+        self.model = ExponentialSmoothing(
+            y.values,
+            trend=self.trend,
+            damped_trend=self.damped_trend,
+            seasonal=self.seasonal,
+            seasonal_periods=(timesteps if timesteps >= 2 else 2))
         self.model = self.model.fit(optimized=True, use_brute=True)
         self._is_fitted = True
 

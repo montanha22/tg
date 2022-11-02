@@ -19,7 +19,7 @@ def _read_passengers_dataset() -> Dataset:
     s = df["Passengers"]
     setattr(s, "period", 12)
     setattr(s, "train_size", 110)
-    setattr(s, "tuning_train_size", 40)
+    setattr(s, "tuning_train_size", 94)
     setattr(s, "stack_size", 12)
     return s
 
@@ -29,7 +29,7 @@ def _read_perfect_sine30() -> Dataset:
     s = df["sine"]
     setattr(s, "period", 30)
     setattr(s, "train_size", 110)
-    setattr(s, "tuning_train_size", 100)
+    setattr(s, "tuning_train_size", 70)
     setattr(s, "stack_size", 30)
     return s
 
@@ -39,7 +39,7 @@ def _read_noisy_sine30() -> Dataset:
     s = df["sine"]
     setattr(s, "period", 30)
     setattr(s, "train_size", 110)
-    setattr(s, "tuning_train_size", 100)
+    setattr(s, "tuning_train_size", 70)
     setattr(s, "stack_size", 30)
     return s
 
@@ -50,8 +50,8 @@ def _read_homicides() -> Dataset:
                      index_col="Month")
     s = df["Homicides"]
     setattr(s, "period", 12)
-    setattr(s, "train_size", 120)
-    setattr(s, "tuning_train_size", 110)
+    setattr(s, "train_size", 110)
+    setattr(s, "tuning_train_size", 94)
     setattr(s, "stack_size", 12)
     return s
 
@@ -61,8 +61,8 @@ def _read_random_walk() -> Dataset:
     s = df["random_walk"]
     setattr(s, "period", 1)
     setattr(s, "train_size", 110)
-    setattr(s, "tuning_train_size", 100)
-    setattr(s, "stack_size", 10)
+    setattr(s, "tuning_train_size", 94)
+    setattr(s, "stack_size", 12)
     return s
 
 

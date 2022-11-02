@@ -1,1 +1,0 @@
-{'low_pass_deg': 1, 'low_pass_jump': 9, 'robust': True, 'seasonal': 99, 'seasonal_deg': 0, 'seasonal_jump': 9, 'trend_deg': 0, 'trend_jump': 7}
