@@ -6,7 +6,6 @@ import optuna
 import pandas as pd
 import pmdarima as pm
 from keras import layers
-from keras.callbacks import EarlyStopping
 from skelm import ELMRegressor
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.svm import SVR
@@ -52,7 +51,7 @@ class ARIMAModel(OneAheadModel):
             X: pd.DataFrame = None,
             timesteps=None,
             stack_size: int = None) -> OneAheadModel:
-        self.model = pm.auto_arima(y, seasonal=False)
+        self.model = pm.auto_arima(y.values, seasonal=False)
         self.y = y
         self._is_fitted = True
         return self
@@ -65,7 +64,7 @@ class ARIMAModel(OneAheadModel):
     def predict_residuals(self) -> pd.Series:
         if not self._is_fitted:
             raise ValueError("Model not fitted yet.")
-        return self.y.values - np.array(self.model.predict_in_sample())
+        return np.array(self.y.values - self.model.predict_in_sample())
 
     @staticmethod
     def suggest_params(trial: optuna.Trial) -> Dict[str, int]:
@@ -81,11 +80,11 @@ class SARIMAModel(OneAheadModel):
             y: pd.Series,
             X: pd.DataFrame = None,
             timesteps=None,
-            stack_size: int = None) -> OneAheadModel:
+            stack_size: int = None) -> None:
+
         self.model = pm.auto_arima(y.values, seasonal=True, m=timesteps)
         self.y = y
         self._is_fitted = True
-        return self
 
     def predict_one_ahead(self) -> float:
         if not self._is_fitted:
@@ -95,7 +94,7 @@ class SARIMAModel(OneAheadModel):
     def predict_residuals(self) -> pd.Series:
         if not self._is_fitted:
             raise ValueError("Model not fitted yet.")
-        return np.array(self.model.predict_in_sample() - self.y.values)
+        return np.array(self.y.values - self.model.predict_in_sample())
 
     @staticmethod
     def suggest_params(trial: optuna.Trial) -> Dict[str, int]:
@@ -107,7 +106,7 @@ class RNNModel(OneAheadModel):
     single_input = False
     tunable = True
 
-    def __init__(self, hidden_units: int, epochs: int):
+    def __init__(self, hidden_units: int = 10, epochs: int = 100):
 
         super().__init__()
         self.hidden_units = hidden_units
@@ -117,11 +116,9 @@ class RNNModel(OneAheadModel):
 
         model = keras.Sequential()
         model.add(
-            layers.SimpleRNN(
-                units=self.hidden_units,
-                activation="relu",
-                input_shape=(shape, 1),
-            ))
+            layers.SimpleRNN(units=self.hidden_units,
+                             activation="relu",
+                             input_shape=(shape, 1)))
         model.add(layers.Dense(1))
         model.compile(optimizer="adam", loss="mse")
         return model
@@ -147,8 +144,8 @@ class RNNModel(OneAheadModel):
 
     @staticmethod
     def suggest_params(trial: optuna.Trial) -> dict:
-        hidden_units = trial.suggest_int("hidden_units", 5, 25, 5)
-        epochs = trial.suggest_int("epochs", 300, 800, 100)
+        hidden_units = trial.suggest_int("hidden_units", 5, 50, 5)
+        epochs = trial.suggest_int("epochs", 100, 1000, 100)
         return {"hidden_units": hidden_units, "epochs": epochs}
 
 
@@ -157,8 +154,11 @@ class SVRModel(OneAheadModel):
     single_input = False
     tunable = True
 
-    def __init__(self, C: float, epsilon: float,
-                 kernel: Literal["linear", "poly", "rbf", "sigmoid"]):
+    def __init__(self,
+                 C: float = 1.0,
+                 epsilon: float = 0.1,
+                 kernel: Literal["linear", "poly", "rbf",
+                                 "sigmoid"] = "sigmoid"):
         super().__init__()
         self.C = C
         self.epsilon = epsilon
@@ -182,8 +182,8 @@ class SVRModel(OneAheadModel):
 
     @staticmethod
     def suggest_params(trial: optuna.Trial) -> dict:
-        C = trial.suggest_loguniform("C", 1e-3, 1e3)
-        epsilon = trial.suggest_loguniform("epsilon", 1e-3, 1e3)
+        C = trial.suggest_float("C", 1e-3, 1e3, log=True)
+        epsilon = trial.suggest_float("epsilon", 1e-3, 1e3, log=True)
         kernel = trial.suggest_categorical(
             "kernel", ["linear", "poly", "rbf", "sigmoid"])
         return {"C": C, "epsilon": epsilon, "kernel": kernel}
@@ -196,8 +196,8 @@ class ELMModel(OneAheadModel):
 
     def __init__(
         self,
-        alpha: float,
-        n_neurons: int,
+        alpha: float = 1.0,
+        n_neurons: int = 100,
         ufunc: Literal['tanh', 'sigm', 'relu', 'lin'] = 'tanh',
         include_original_features: bool = False,
         density: float = 1,
@@ -236,13 +236,13 @@ class ELMModel(OneAheadModel):
 
     @staticmethod
     def suggest_params(trial: optuna.Trial) -> dict:
-        alpha = trial.suggest_loguniform("alpha", 1e-7, 1e7)
+        alpha = trial.suggest_float("alpha", 1e-7, 1e7, log=True)
         n_neurons = trial.suggest_int("n_neurons", 5, 150, 5)
         ufunc = trial.suggest_categorical("ufunc",
                                           ['tanh', 'sigm', 'relu', 'lin'])
         include_original_features = trial.suggest_categorical(
             "include_original_features", [True, False])
-        density = trial.suggest_uniform("density", 0.1, 1.0)
+        density = trial.suggest_float("density", 0.1, 1.0, step=0.05)
         pairwise_metric = trial.suggest_categorical(
             "pairwise_metric", ['euclidean', 'cityblock', 'cosine'])
         return {
@@ -287,7 +287,7 @@ class STLModel(OneAheadModel):
         if not timesteps:
             raise ValueError("timesteps must be provided")
 
-        self.model = STLForecaster(sp=timesteps,
+        self.model = STLForecaster(sp=(timesteps if timesteps >= 2 else 2),
                                    seasonal=self.seasonal,
                                    seasonal_deg=self.seasonal_deg,
                                    trend_deg=self.trend_deg,
@@ -311,7 +311,7 @@ class STLModel(OneAheadModel):
     def predict_one_ahead(self) -> float:
         if not self._is_fitted:
             raise ValueError("Model must be fitted before predicting")
-        return self.model.predict(fh=[1])[0]
+        return self.model.predict(fh=[1])[0][0]
 
     def predict_trend_one_ahead(self) -> float:
         if not self._is_fitted:
@@ -373,11 +373,12 @@ class ESModel(OneAheadModel):
             raise ValueError("timesteps must be provided")
 
         self.y = y
-        self.model = ExponentialSmoothing(y.values,
-                                          trend=self.trend,
-                                          damped_trend=self.damped_trend,
-                                          seasonal=self.seasonal,
-                                          seasonal_periods=timesteps)
+        self.model = ExponentialSmoothing(
+            y.values,
+            trend=self.trend,
+            damped_trend=self.damped_trend,
+            seasonal=self.seasonal,
+            seasonal_periods=(timesteps if timesteps >= 2 else 2))
         self.model = self.model.fit(optimized=True, use_brute=True)
         self._is_fitted = True
 
@@ -472,13 +473,13 @@ class LSTMModel(OneAheadModel):
 
     @staticmethod
     def suggest_params(trial: optuna.Trial) -> dict:
-        n_neurons = trial.suggest_int("n_neurons", 1, 100)
+        n_neurons = trial.suggest_int("n_neurons", 5, 100, 5)
         n_layers = trial.suggest_int("n_layers", 1, 10)
         dropout = trial.suggest_float("dropout", 0.0, 0.5)
         optimizer = trial.suggest_categorical("optimizer", ["adam", "sgd"])
         loss = trial.suggest_categorical("loss", ["mse", "mae"])
-        epochs = trial.suggest_int("epochs", 10, 200, 10)
-        batch_size = trial.suggest_int("batch_size", 1, 100)
+        epochs = trial.suggest_int("epochs", 50, 500, 50)
+        batch_size = trial.suggest_int("batch_size", 10, 200, 10)
         return {
             "n_neurons": n_neurons,
             "n_layers": n_layers,
@@ -521,8 +522,12 @@ class SARIMASVRModel(HybridModel):
 
     tunable = True
 
-    def __init__(self, C: float, epsilon: float,
-                 kernel: Literal["linear", "poly", "rbf", "sigmoid"]) -> None:
+    def __init__(
+        self,
+        C: float = 1.0,
+        epsilon: float = 0.1,
+        kernel: Literal["linear", "poly", "rbf",
+                        "sigmoid"] = 'sigmoid') -> None:
         super().__init__(SARIMAModel, SVRModel, method='residue')
         self.first_model = SARIMAModel()
         self.second_model = SVRModel(C=C, epsilon=epsilon, kernel=kernel)
@@ -551,10 +556,6 @@ class STLELMModel(HybridModel):
 
     def __init__(
         self,
-        alpha_trend: float,
-        n_neurons_trend: int,
-        alpha_residual: float,
-        n_neurons_residual: int,
         seasonal: int = 7,
         seasonal_deg: int = 1,
         trend_deg: int = 1,
@@ -563,16 +564,13 @@ class STLELMModel(HybridModel):
         trend_jump: int = 1,
         low_pass_jump: int = 1,
         robust: bool = False,
-        ufunc_trend: Literal['tanh', 'sigm', 'relu', 'lin'] = 'tanh',
-        include_original_features_trend: bool = False,
-        density_trend: float = 1,
-        pairwise_metric_trend: Literal['euclidean', 'cityblock',
-                                       'cosine'] = 'euclidean',
-        ufunc_residual: Literal['tanh', 'sigm', 'relu', 'lin'] = 'tanh',
-        include_original_features_residual: bool = False,
-        density_residual: float = 1,
-        pairwise_metric_residual: Literal['euclidean', 'cityblock',
-                                          'cosine'] = 'euclidean'
+        alpha: float = 1.0,
+        n_neurons: int = 100,
+        ufunc: Literal['tanh', 'sigm', 'relu', 'lin'] = 'tanh',
+        include_original_features: bool = False,
+        density: float = 1,
+        pairwise_metric: Literal['euclidean', 'cityblock',
+                                 'cosine'] = 'euclidean'
     ) -> None:
         super().__init__(STLModel, ELMModel, method='decomposition')
         self.first_model = STLModel(seasonal=seasonal,
@@ -583,22 +581,21 @@ class STLELMModel(HybridModel):
                                     trend_jump=trend_jump,
                                     low_pass_jump=low_pass_jump,
                                     robust=robust)
-        self.second_model = ELMModel(alpha=alpha_trend,
-                                     n_neurons=n_neurons_trend)
+        self.second_model = ELMModel()
         self.trend_model = ELMModel(
-            alpha=alpha_trend,
-            n_neurons=n_neurons_trend,
-            ufunc=ufunc_trend,
-            include_original_features=include_original_features_trend,
-            density=density_trend,
-            pairwise_metric=pairwise_metric_trend)
+            alpha=alpha,
+            n_neurons=n_neurons,
+            ufunc=ufunc,
+            include_original_features=include_original_features,
+            density=density,
+            pairwise_metric=pairwise_metric)
         self.residual_model = ELMModel(
-            alpha=alpha_residual,
-            n_neurons=n_neurons_residual,
-            ufunc=ufunc_residual,
-            include_original_features=include_original_features_residual,
-            density=density_residual,
-            pairwise_metric=pairwise_metric_residual)
+            alpha=alpha,
+            n_neurons=n_neurons,
+            ufunc=ufunc,
+            include_original_features=include_original_features,
+            density=density,
+            pairwise_metric=pairwise_metric)
 
     def fit(self,
             y: pd.Series,
@@ -614,46 +611,7 @@ class STLELMModel(HybridModel):
     def suggest_params(trial: optuna.Trial) -> dict:
         return {
             **STLModel.suggest_params(trial),
-            **{
-                'alpha_trend':
-                trial.suggest_loguniform("alpha_trend", 1e-7, 1e7),
-                'n_neurons_trend':
-                trial.suggest_int("n_neurons_trend", 5, 150, 5),
-                'ufunc_trend':
-                trial.suggest_categorical("ufunc_trend", [
-                    'tanh', 'sigm', 'relu', 'lin'
-                ]),
-                'include_original_features_trend':
-                trial.suggest_categorical("include_original_features_trend", [
-                    True, False
-                ]),
-                'density_trend':
-                trial.suggest_uniform("density_trend", 0.1, 1.0),
-                'pairwise_metric_trend':
-                trial.suggest_categorical("pairwise_metric_trend", [
-                    'euclidean', 'cityblock', 'cosine'
-                ])
-            },
-            **{
-                'alpha_residual':
-                trial.suggest_loguniform("alpha_residual", 1e-7, 1e7),
-                'n_neurons_residual':
-                trial.suggest_int("n_neurons_residual", 5, 150, 5),
-                'ufunc_residual':
-                trial.suggest_categorical("ufunc_residual", [
-                    'tanh', 'sigm', 'relu', 'lin'
-                ]),
-                'include_original_features_residual':
-                trial.suggest_categorical("include_original_features_residual", [
-                    True, False
-                ]),
-                'density_residual':
-                trial.suggest_uniform("density_residual", 0.1, 1.0),
-                'pairwise_metric_residual':
-                trial.suggest_categorical("pairwise_metric_residual", [
-                    'euclidean', 'cityblock', 'cosine'
-                ])
-            }
+            **ELMModel.suggest_params(trial)
         }
 
 

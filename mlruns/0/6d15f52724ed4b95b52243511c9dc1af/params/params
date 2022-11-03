@@ -1,0 +1,1 @@
+{'damped_trend': True, 'seasonal': 'add', 'trend': 'mul'}

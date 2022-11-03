@@ -84,11 +84,11 @@ class HybridModel(OneAheadModel):
 
             X_trend = pd.DataFrame(
                 stack_lags(x=trend_component, lags=stack_size))
-            y_trend = trend_component[timesteps:]
+            y_trend = trend_component[stack_size:]
 
             X_residual = pd.DataFrame(
                 stack_lags(x=residual_component, lags=stack_size))
-            y_residual = residual_component[timesteps:]
+            y_residual = residual_component[stack_size:]
 
             self.trend_model.fit(y=y_trend,
                                  X=X_trend,
