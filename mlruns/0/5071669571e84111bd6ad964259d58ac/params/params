@@ -1,0 +1,1 @@
+{'batch_size': 100, 'damped_trend': True, 'dropout': 0.2152335146543627, 'epochs': 500, 'loss': 'mse', 'n_layers': 1, 'n_neurons': 90, 'optimizer': 'adam', 'seasonal': None, 'trend': 'mul'}

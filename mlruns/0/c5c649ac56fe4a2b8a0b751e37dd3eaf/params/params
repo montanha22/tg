@@ -1,0 +1,1 @@
+{'alpha': 1.274592530975344, 'density': 0.7000000000000001, 'include_original_features': False, 'n_neurons': 90, 'pairwise_metric': 'cityblock', 'ufunc': 'relu'}

@@ -1,0 +1,1 @@
+{'batch_size': 100, 'dropout': 0.11552522666252435, 'epochs': 250, 'loss': 'mse', 'n_layers': 4, 'n_neurons': 95, 'optimizer': 'adam'}
