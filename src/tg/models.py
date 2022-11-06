@@ -660,6 +660,53 @@ class ESLSTMModel(HybridModel):
         }
 
 
+class ESELMModel(HybridModel):
+
+    tunable = True
+
+    def __init__(
+        self,
+        trend: str = "add",
+        damped_trend: bool = False,
+        seasonal: str = None,
+        alpha: float = 1.0,
+        n_neurons: int = 100,
+        ufunc: Literal['tanh', 'sigm', 'relu', 'lin'] = 'tanh',
+        include_original_features: bool = False,
+        density: float = 1,
+        pairwise_metric: Literal['euclidean', 'cityblock',
+                                 'cosine'] = 'euclidean',
+    ) -> None:
+        super().__init__(ESModel, LSTMModel, method='residue')
+        self.first_model = ESModel(trend=trend,
+                                   damped_trend=damped_trend,
+                                   seasonal=seasonal)
+        self.second_model = ELMModel(
+            alpha=alpha,
+            n_neurons=n_neurons,
+            ufunc=ufunc,
+            include_original_features=include_original_features,
+            density=density,
+            pairwise_metric=pairwise_metric)
+
+    def fit(self,
+            y: pd.Series,
+            X: pd.DataFrame = None,
+            timesteps: int = None,
+            stack_size: int = None) -> None:
+        super().fit(y=y, X=X, timesteps=timesteps, stack_size=stack_size)
+
+    def predict_one_ahead(self) -> float:
+        return super().predict_one_ahead()
+
+    @staticmethod
+    def suggest_params(trial: optuna.Trial) -> dict:
+        return {
+            **ESModel.suggest_params(trial),
+            **ELMModel.suggest_params(trial)
+        }
+
+
 _MODEL_CLASS_LOOKUP: Dict[str, Type[OneAheadModel]] = {
     'NAIVE': NaiveModel,
     'ARIMA': ARIMAModel,
@@ -673,7 +720,8 @@ _MODEL_CLASS_LOOKUP: Dict[str, Type[OneAheadModel]] = {
     'ARIMA_RNN': ARIMARNNModel,
     'SARIMA_SVR': SARIMASVRModel,
     'STL_ELM': STLELMModel,
-    'ES_LSTM': ESLSTMModel
+    'ES_LSTM': ESLSTMModel,
+    'ES_ELM': ESELMModel
 }
 
 

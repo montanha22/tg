@@ -100,7 +100,8 @@ INPUT_FACTORY_LOOKUP = {
     'ARIMA_RNN': _get_default_input,
     'SARIMA_SVR': _get_default_input,
     'STL_ELM': _get_default_input,
-    'ES_LSTM': _get_default_input
+    'ES_LSTM': _get_default_input,
+    'ES_ELM': _get_default_input,
 }
 
 

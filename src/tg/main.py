@@ -63,7 +63,7 @@ def _tune_hyperparameters(model_name: str,
                                 'min_train_points':
                                 data_factory.dataset().tuning_train_size
                             },
-                            n_trials=50)
+                            n_trials=100)
 
 
 def tune_hyperparameters(models: list,
@@ -81,25 +81,25 @@ def main():
     ]
     ALL_MODELS = [
         'NAIVE', 'ARIMA', 'SARIMA', 'RNN', 'SVR', 'ELM', 'STL', 'ES', 'LSTM',
-        'ARIMA_RNN', 'SARIMA_SVR', 'STL_ELM', 'ES_LSTM'
+        'ARIMA_RNN', 'SARIMA_SVR', 'STL_ELM', 'ES_LSTM', 'ES_ELM'
     ]
     SINGLE_MODELS = [
         'NAIVE', 'ARIMA', 'SARIMA', 'RNN', 'SVR', 'ELM', 'STL', 'ES', 'LSTM'
     ]
-    HYBRID_MODELS = ['ARIMA_RNN', 'SARIMA_SVR', 'STL_ELM', 'ES_LSTM']
+    HYBRID_MODELS = ['ARIMA_RNN', 'SARIMA_SVR', 'STL_ELM', 'ES_LSTM', 'ES_ELM']
     TUNNABLE_MODELS = [
         'NAIVE', 'RNN', 'SVR', 'ELM', 'STL', 'ES', 'LSTM', 'ARIMA_RNN',
-        'SARIMA_SVR', 'STL_ELM', 'ES_LSTM'
+        'SARIMA_SVR', 'STL_ELM', 'ES_LSTM', 'ES_ELM'
     ]
     TUNNABLE_SINGLE_MODELS = [
         'NAIVE', 'RNN', 'SVR', 'ELM', 'STL', 'ES', 'LSTM'
     ]
 
-    # process_map(functools.partial(_main, models=HYBRID_MODELS, fn='tune'),
-    #             ALL_DATASETS)
-
-    process_map(functools.partial(_main, models=HYBRID_MODELS, fn='mlflow'),
+    process_map(functools.partial(_main, models=['ES_ELM'], fn='tune'),
                 ALL_DATASETS)
+
+    process_map(functools.partial(_main, models=['ES_ELM'], fn='mlflow'),
+                ["RANDOM_WALK"])
 
 
 if __name__ == "__main__":

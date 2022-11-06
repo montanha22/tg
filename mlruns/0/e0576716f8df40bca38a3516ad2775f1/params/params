@@ -1,0 +1,1 @@
+{'alpha': 2.6720004655038143e-07, 'damped_trend': True, 'density': 0.9500000000000001, 'include_original_features': True, 'n_neurons': 105, 'pairwise_metric': 'cosine', 'seasonal': 'add', 'trend': 'mul', 'ufunc': 'relu'}
