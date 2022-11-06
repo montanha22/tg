@@ -1,121 +1,123 @@
+{
 \newcommand{\STAB}[1]{\begin{tabular}{@{}c@{}}#1\end{tabular}}
 \begin{table}[H]
 \centering
-\caption{Comparação entre métricas no conjunto de dados Caminhada aleatória}
-\label{results_Caminhada_aleatoria}
-\begin{tabular}{c c c c c c}
-\toprule
- &  & MAE & MAPE & RMSE & sMAPE \\
-Conjunto de dados & Modelo &  &  &  &  \\
-\midrule
-\multirow[c]{12}{*}{\STAB{\rotatebox[origin=c]{90}{Caminhada aleatória}}} & ARIMA & 0.007 & 0.764 & \bfseries 0.011 & 0.383 \\
- & ARIMA\_RNN & 0.012 & 1.195 & 0.015 & 0.598 \\
- & ELM & 0.009 & 0.905 & 0.012 & 0.452 \\
- & ES & \bfseries 0.007 & \bfseries 0.701 & 0.011 & \bfseries 0.352 \\
- & ES\_LSTM & 0.020 & 2.108 & 0.024 & 1.045 \\
- & LSTM & 0.054 & 5.640 & 0.063 & 2.724 \\
- & RNN & 0.019 & 1.857 & 0.026 & 0.917 \\
- & SARIMA & 0.007 & 0.764 & \bfseries 0.011 & 0.383 \\
- & SARIMA\_SVR & 0.009 & 0.924 & 0.012 & 0.462 \\
- & STL & 0.033 & 3.216 & 0.039 & 1.604 \\
- & STL\_ELM & 0.010 & 1.073 & 0.013 & 0.538 \\
- & SVR & 0.010 & 1.084 & 0.013 & 0.540 \\
-\bottomrule
-\end{tabular}
-\end{table}
-\begin{table}[H]
-\centering
-\caption{Comparação entre métricas no conjunto de dados Homicídios dolosos no RJ}
-\label{results_Homicidios_dolosos_no_RJ}
-\begin{tabular}{c c c c c c}
-\toprule
- &  & MAE & MAPE & RMSE & sMAPE \\
-Conjunto de dados & Modelo &  &  &  &  \\
-\midrule
-\multirow[c]{12}{*}{\STAB{\rotatebox[origin=c]{90}{Homicídios dolosos no RJ}}} & ARIMA & 27.93 & 7.05 & 34.55 & 3.47 \\
- & ARIMA\_RNN & 29.50 & 7.54 & 36.34 & 3.76 \\
- & ELM & 30.37 & 7.70 & 37.82 & 3.81 \\
- & ES & \bfseries 24.90 & \bfseries 6.31 & \bfseries 30.88 & \bfseries 3.12 \\
- & ES\_LSTM & 27.83 & 7.03 & 36.18 & 3.51 \\
- & LSTM & 30.64 & 7.74 & 38.70 & 3.84 \\
- & RNN & 28.68 & 7.22 & 37.51 & 3.61 \\
- & SARIMA & 26.08 & 6.66 & 32.51 & 3.30 \\
- & SARIMA\_SVR & 30.31 & 7.70 & 37.70 & 3.82 \\
- & STL & 28.03 & 7.23 & 34.14 & 3.62 \\
- & STL\_ELM & 28.53 & 7.32 & 34.80 & 3.68 \\
- & SVR & 30.59 & 7.73 & 37.78 & 3.86 \\
-\bottomrule
-\end{tabular}
-\end{table}
-\begin{table}[H]
-\centering
-\caption{Comparação entre métricas no conjunto de dados Passageiros aéreos}
-\label{results_Passageiros_aereos}
+\caption{Comparação entre métricas no conjunto de dados Passageiros aéreos. Em negrito destacam-se os melhores resultados.}
+\label{tab:results_per_dataset_Passageiros_aereos}
 \begin{tabular}{c c c c c c}
 \toprule
  &  & MAE & MAPE & RMSE & sMAPE \\
 Conjunto de dados & Modelo &  &  &  &  \\
 \midrule
 \multirow[c]{12}{*}{\STAB{\rotatebox[origin=c]{90}{Passageiros aéreos}}} & ARIMA & 36.10 & 8.42 & 43.41 & 4.24 \\
- & ARIMA\_RNN & 16.11 & 3.87 & 20.71 & 1.96 \\
- & ELM & 17.58 & 4.30 & 21.85 & 2.12 \\
- & ES & \bfseries 10.93 & \bfseries 2.52 & \bfseries 14.12 & \bfseries 1.26 \\
- & ES\_LSTM & 16.04 & 3.74 & 19.67 & 1.88 \\
- & LSTM & 20.20 & 4.81 & 23.63 & 2.43 \\
  & RNN & 14.81 & 3.53 & 20.03 & 1.74 \\
+ & ARIMA\_RNN & 16.11 & 3.87 & 20.71 & 1.96 \\
  & SARIMA & 14.32 & 3.29 & 17.92 & 1.65 \\
+ & SVR & 18.29 & 4.46 & 22.01 & 2.20 \\
  & SARIMA\_SVR & 12.53 & 3.04 & 17.03 & 1.51 \\
  & STL & 13.21 & 2.98 & 18.62 & 1.49 \\
+ & ELM & 17.58 & 4.30 & 21.85 & 2.12 \\
  & STL\_ELM & 18.96 & 4.50 & 22.49 & 2.30 \\
- & SVR & 18.29 & 4.46 & 22.01 & 2.20 \\
+ & ES & \bfseries 10.93 & \bfseries 2.52 & \bfseries 14.12 & \bfseries 1.26 \\
+ & LSTM & 20.20 & 4.81 & 23.63 & 2.43 \\
+ & ES\_LSTM & 16.04 & 3.74 & 19.67 & 1.88 \\
 \bottomrule
 \end{tabular}
 \end{table}
 \begin{table}[H]
 \centering
-\caption{Comparação entre métricas no conjunto de dados Seno perfeito}
-\label{results_Seno_perfeito}
+\caption{Comparação entre métricas no conjunto de dados Seno perfeito. Em negrito destacam-se os melhores resultados.}
+\label{tab:results_per_dataset_Seno_perfeito}
 \begin{tabular}{c c c c c c}
 \toprule
  &  & MAE & MAPE & RMSE & sMAPE \\
 Conjunto de dados & Modelo &  &  &  &  \\
 \midrule
-\multirow[c]{12}{*}{\STAB{\rotatebox[origin=c]{90}{Seno perfeito}}} & ARIMA & 0.005685 & 0.299284 & 0.023266 & 0.150571 \\
- & ARIMA\_RNN & 0.001612 & 0.112591 & 0.003830 & 0.056021 \\
- & ELM & \bfseries 0.000009 & \bfseries 0.000615 & \bfseries 0.000011 & \bfseries 0.000308 \\
- & ES & 0.002825 & 0.166965 & 0.003181 & 0.083518 \\
- & ES\_LSTM & 0.003919 & 0.201876 & 0.007191 & 0.100789 \\
- & LSTM & 0.023426 & 1.135870 & 0.033093 & 0.569756 \\
- & RNN & 0.001898 & 0.094447 & 0.004640 & 0.047272 \\
- & SARIMA & 0.000129 & 0.008462 & 0.000233 & 0.004231 \\
- & SARIMA\_SVR & 0.001802 & 0.117005 & 0.001931 & 0.058467 \\
- & STL & 0.024547 & 1.430180 & 0.027602 & 0.716716 \\
- & STL\_ELM & 0.004827 & 0.255250 & 0.008099 & 0.127918 \\
- & SVR & 0.141146 & 9.595492 & 0.157268 & 4.529543 \\
+\multirow[c]{12}{*}{\STAB{\rotatebox[origin=c]{90}{Seno perfeito}}} & ARIMA & 0.005685 & 0.2993 & 0.02327 & 0.1506 \\
+ & RNN & 0.001898 & 0.0944 & 0.00464 & 0.0473 \\
+ & ARIMA\_RNN & 0.001612 & 0.1126 & 0.00383 & 0.0560 \\
+ & SARIMA & 0.000129 & 0.0085 & 0.00023 & 0.0042 \\
+ & SVR & 0.141146 & 9.5955 & 0.15727 & 4.5295 \\
+ & SARIMA\_SVR & 0.001802 & 0.1170 & 0.00193 & 0.0585 \\
+ & STL & 0.024547 & 1.4302 & 0.02760 & 0.7167 \\
+ & ELM & \bfseries 0.000009 & \bfseries 0.0006 & \bfseries 0.00001 & \bfseries 0.0003 \\
+ & STL\_ELM & 0.004827 & 0.2553 & 0.00810 & 0.1279 \\
+ & ES & 0.002825 & 0.1670 & 0.00318 & 0.0835 \\
+ & LSTM & 0.023426 & 1.1359 & 0.03309 & 0.5698 \\
+ & ES\_LSTM & 0.003919 & 0.2019 & 0.00719 & 0.1008 \\
 \bottomrule
 \end{tabular}
 \end{table}
 \begin{table}[H]
 \centering
-\caption{Comparação entre métricas no conjunto de dados Seno ruidoso}
-\label{results_Seno_ruidoso}
+\caption{Comparação entre métricas no conjunto de dados Seno ruidoso. Em negrito destacam-se os melhores resultados.}
+\label{tab:results_per_dataset_Seno_ruidoso}
 \begin{tabular}{c c c c c c}
 \toprule
  &  & MAE & MAPE & RMSE & sMAPE \\
 Conjunto de dados & Modelo &  &  &  &  \\
 \midrule
 \multirow[c]{12}{*}{\STAB{\rotatebox[origin=c]{90}{Seno ruidoso}}} & ARIMA & 0.19 & 12.27 & 0.26 & 6.05 \\
- & ARIMA\_RNN & 0.17 & 11.57 & 0.21 & 5.62 \\
- & ELM & \bfseries 0.14 & 10.24 & \bfseries 0.18 & 4.77 \\
- & ES & 0.20 & 14.18 & 0.25 & 6.76 \\
- & ES\_LSTM & 0.16 & 11.08 & 0.20 & 5.25 \\
- & LSTM & 0.18 & 12.67 & 0.21 & 5.85 \\
  & RNN & 0.15 & \bfseries 9.52 & 0.18 & \bfseries 4.57 \\
+ & ARIMA\_RNN & 0.17 & 11.57 & 0.21 & 5.62 \\
  & SARIMA & 0.20 & 13.85 & 0.25 & 6.52 \\
+ & SVR & 0.17 & 12.76 & 0.21 & 5.70 \\
  & SARIMA\_SVR & 0.16 & 11.01 & 0.19 & 5.13 \\
  & STL & 0.20 & 13.82 & 0.25 & 6.60 \\
+ & ELM & \bfseries 0.14 & 10.24 & \bfseries 0.18 & 4.77 \\
  & STL\_ELM & 0.18 & 12.23 & 0.23 & 5.76 \\
- & SVR & 0.17 & 12.76 & 0.21 & 5.70 \\
+ & ES & 0.20 & 14.18 & 0.25 & 6.76 \\
+ & LSTM & 0.18 & 12.67 & 0.21 & 5.85 \\
+ & ES\_LSTM & 0.16 & 11.08 & 0.20 & 5.25 \\
 \bottomrule
 \end{tabular}
 \end{table}
+\begin{table}[H]
+\centering
+\caption{Comparação entre métricas no conjunto de dados Homicídios dolosos no RJ. Em negrito destacam-se os melhores resultados.}
+\label{tab:results_per_dataset_Homicidios_dolosos_no_RJ}
+\begin{tabular}{c c c c c c}
+\toprule
+ &  & MAE & MAPE & RMSE & sMAPE \\
+Conjunto de dados & Modelo &  &  &  &  \\
+\midrule
+\multirow[c]{12}{*}{\STAB{\rotatebox[origin=c]{90}{Homicídios dolosos no RJ}}} & ARIMA & 27.93 & 7.05 & 34.55 & 3.47 \\
+ & RNN & 28.68 & 7.22 & 37.51 & 3.61 \\
+ & ARIMA\_RNN & 29.50 & 7.54 & 36.34 & 3.76 \\
+ & SARIMA & 26.08 & 6.66 & 32.51 & 3.30 \\
+ & SVR & 30.59 & 7.73 & 37.78 & 3.86 \\
+ & SARIMA\_SVR & 30.31 & 7.70 & 37.70 & 3.82 \\
+ & STL & 28.03 & 7.23 & 34.14 & 3.62 \\
+ & ELM & 30.37 & 7.70 & 37.82 & 3.81 \\
+ & STL\_ELM & 28.53 & 7.32 & 34.80 & 3.68 \\
+ & ES & \bfseries 24.90 & \bfseries 6.31 & \bfseries 30.88 & \bfseries 3.12 \\
+ & LSTM & 30.64 & 7.74 & 38.70 & 3.84 \\
+ & ES\_LSTM & 27.83 & 7.03 & 36.18 & 3.51 \\
+\bottomrule
+\end{tabular}
+\end{table}
+\begin{table}[H]
+\centering
+\caption{Comparação entre métricas no conjunto de dados Caminhada aleatória. Em negrito destacam-se os melhores resultados.}
+\label{tab:results_per_dataset_Caminhada_aleatoria}
+\begin{tabular}{c c c c c c}
+\toprule
+ &  & MAE & MAPE & RMSE & sMAPE \\
+Conjunto de dados & Modelo &  &  &  &  \\
+\midrule
+\multirow[c]{12}{*}{\STAB{\rotatebox[origin=c]{90}{Caminhada aleatória}}} & ARIMA & 0.007 & 0.76 & \bfseries 0.01 & 0.38 \\
+ & RNN & 0.019 & 1.86 & 0.03 & 0.92 \\
+ & ARIMA\_RNN & 0.012 & 1.20 & 0.01 & 0.60 \\
+ & SARIMA & 0.007 & 0.76 & \bfseries 0.01 & 0.38 \\
+ & SVR & 0.010 & 1.08 & 0.01 & 0.54 \\
+ & SARIMA\_SVR & 0.009 & 0.92 & 0.01 & 0.46 \\
+ & STL & 0.033 & 3.22 & 0.04 & 1.60 \\
+ & ELM & 0.009 & 0.91 & 0.01 & 0.45 \\
+ & STL\_ELM & 0.010 & 1.07 & 0.01 & 0.54 \\
+ & ES & \bfseries 0.007 & \bfseries 0.70 & 0.01 & \bfseries 0.35 \\
+ & LSTM & 0.054 & 5.64 & 0.06 & 2.72 \\
+ & ES\_LSTM & 0.020 & 2.11 & 0.02 & 1.05 \\
+\bottomrule
+\end{tabular}
+\end{table}
+ }
